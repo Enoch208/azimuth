@@ -4,7 +4,7 @@ import { createAppKit } from "@reown/appkit/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { WagmiProvider } from "wagmi";
-import { APP_METADATA, NETWORKS, REOWN_PROJECT_ID, wagmiAdapter, wagmiConfig } from "@/lib/chain/wagmi";
+import { APP_METADATA, BASE_SEPOLIA_RPC, NETWORKS, REOWN_PROJECT_ID, wagmiAdapter, wagmiConfig } from "@/lib/chain/wagmi";
 
 if (REOWN_PROJECT_ID) {
   createAppKit({
@@ -13,6 +13,7 @@ if (REOWN_PROJECT_ID) {
     defaultNetwork: NETWORKS[0],
     projectId: REOWN_PROJECT_ID,
     metadata: APP_METADATA,
+    customRpcUrls: { "eip155:84532": [{ url: BASE_SEPOLIA_RPC }] },
     features: { analytics: false, email: false, socials: false },
     themeMode: "light",
     themeVariables: {
