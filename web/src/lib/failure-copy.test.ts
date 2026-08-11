@@ -1,0 +1,65 @@
+import { describe, expect, it } from "vitest";
+import { describeFailure } from "@/lib/failure-copy";
+
+const VIEM_RPC_DUMP = `An unknown RPC error occurred. Request Arguments: chain: Base Sepolia (id: 84532) from: 0xA69C2e36d7fd2e3834eE274Aa7B12bdBDA304b07 to: 0x60948d993B9c4F12982F155f36d049F995602a89 data: 0xf679028800000000000000000000000000000000000000000000000000000000`;
+
+describe("failure copy never shows a player raw chain plumbing", () => {
+  it("turns a viem RPC dump into one readable sentence", () => {
+    const copy = describeFailure(VIEM_RPC_DUMP);
+    expect(copy.title).toBe("Could not reach Base");
+    expect(copy.note).not.toMatch(/0x[0-9a-f]{16}/i);
+    expect(copy.note).not.toContain("Request Arguments");
+  });
+
+  it("never leaks calldata for any known failure", () => {
+    const cases = [
+      VIEM_RPC_DUMP,
+      "User rejected the request.",
+      "insufficient funds for gas * price + value",
+      "nonce too low: next nonce 30, tx nonce 29",
+      "Not enough AZ credits left for this action",
+      "execution reverted: VaultExpired",
+      "The request timed out.",
+    ];
+    for (const raw of cases) {
+      const copy = describeFailure(raw);
+      expect(copy.note).not.toMatch(/0x[0-9a-f]{20,}/i);
+      expect(copy.title.length).toBeLessThan(60);
+      expect(copy.note.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("tells a player who cancelled that nothing was spent", () => {
+    const copy = describeFailure("User rejected the request.");
+    expect(copy.title).toBe("You cancelled it");
+    expect(copy.note).toMatch(/nothing was spent/i);
+  });
+
+  it("distinguishes running out of gas money from running out of AZ", () => {
+    expect(describeFailure("insufficient funds for gas").title).toMatch(/Base Sepolia ETH/);
+    expect(describeFailure("Not enough AZ credits left").title).toBe("Out of AZ");
+  });
+
+  it("explains a busy wallet rather than repeating the nonce numbers", () => {
+    const copy = describeFailure("nonce too low: next nonce 30, tx nonce 29");
+    expect(copy.title).toBe("Your wallet is still busy");
+  });
+
+  it("explains a contract revert without echoing solidity", () => {
+    const copy = describeFailure("Execution reverted with reason: Execution reverted for an unknown reason.");
+    expect(copy.title).toBe("The contract turned that move down");
+    expect(copy.note).not.toMatch(/revert/i);
+  });
+
+  it("keeps a short unrecognised message but still reassures", () => {
+    const copy = describeFailure("Something odd happened.");
+    expect(copy.title).toBe("That move did not go through");
+    expect(copy.note).toContain("Something odd happened.");
+    expect(copy.note).toMatch(/try the cell again/i);
+  });
+
+  it("drops an unrecognised message that is too long to read", () => {
+    const copy = describeFailure("z".repeat(400));
+    expect(copy.note).toBe("Nothing was spent. Try the cell again.");
+  });
+});
