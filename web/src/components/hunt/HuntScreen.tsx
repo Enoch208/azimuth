@@ -120,11 +120,7 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
   }
 
   useEffect(() => {
-    if (!client.onchain) {
-      setActivity([]);
-      setActivityLoading(false);
-      return;
-    }
+    if (!client.onchain) return;
     let live = true;
     loadVaultActivity(vault.id, vault.round, vault.createdAt, (partial) => {
       if (live) { setActivity(partial); setActivityLoading(false); }
@@ -183,6 +179,10 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
     () => survivingCells(snapshot.probes, snapshot.bearings),
     [snapshot.probes, snapshot.bearings],
   );
+  // A practice vault hides its own secret, so events from the real vault on
+  // chain describe a different board and must not be shown beside it.
+  const publicActivity = client.onchain ? activity : [];
+  const publicActivityLoading = client.onchain ? activityLoading : false;
   const settledCoordinate = snapshot.revealed ?? publicReveal;
   const failed = failure ? describeFailure(failure) : null;
   const isFirstProbe = snapshot.probes.length === 1;
@@ -269,7 +269,7 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
           ) : null}
 
           {settledCoordinate ? (
-            <TruthReveal entries={activity} revealed={settledCoordinate} you={address} />
+            <TruthReveal entries={publicActivity} revealed={settledCoordinate} you={address} />
           ) : (
           <div className="w-full overflow-hidden rounded-panel border-2 border-ink bg-paper-deep shadow-hard-lg lg:max-w-[min(100%,calc(100dvh-29rem))]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink px-4 py-3">
@@ -378,7 +378,7 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
 
         <div className="flex flex-col gap-5">
           <IntelDrawer bearings={snapshot.bearings} bearingsLeft={snapshot.bearingsLeft} />
-          <ActivityRail entries={activity} you={address} loading={activityLoading} />
+          <ActivityRail entries={publicActivity} you={address} loading={publicActivityLoading} />
         </div>
       </div>
     </div>
