@@ -49,6 +49,7 @@ contract AzimuthDaily {
     error AlreadyDug();
     error NotYourTreasure();
     error DayStillRunning();
+    error ClaimAfterMidnight();
     error AlreadyRevealed();
 
     event HuntOpened(uint256 indexed day, uint64 openedAt);
@@ -114,8 +115,13 @@ contract AzimuthDaily {
         emit Dug(day, msg.sender, x, y, player.digs, temperatureHandle);
     }
 
-    function claimTreasure(bytes[] calldata signatures) external {
-        uint256 day = today();
+    // Dig coordinates are plaintext, so anything that publicly marks a hunter as
+    // finished would point straight at the treasure: it is simply their last dug
+    // tile. Scores are therefore registered once the day is over, when the map is
+    // no longer a secret. A player still sees their own result the instant they
+    // dig it, because their temperature is decrypted to their wallet alone.
+    function claimTreasure(uint256 day, bytes[] calldata signatures) external {
+        if (day >= today()) revert ClaimAfterMidnight();
         Player storage player = players[day][msg.sender];
         if (player.digs == 0) revert HuntNotOpen();
         if (player.finished) revert AlreadyFinished();

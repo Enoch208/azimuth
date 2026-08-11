@@ -172,8 +172,9 @@ contract AzimuthDailyTest is IncoTest {
         (,,,, bytes32 foundHandle) = game.playerState(day, ada);
         (, bytes[] memory signatures) =
             getDecryptionAttestation(ada, HandleWithProof({handle: foundHandle, proof: _emptyAllowanceProof()}));
+        vm.warp(block.timestamp + 1 days);
         vm.prank(ada);
-        game.claimTreasure(signatures);
+        game.claimTreasure(day, signatures);
 
         (,, bool finished, uint8 foundOn,) = game.playerState(day, ada);
         assertTrue(finished, "claim did not finish the hunt");
@@ -193,9 +194,41 @@ contract AzimuthDailyTest is IncoTest {
         (,,,, bytes32 foundHandle) = game.playerState(day, ada);
         (, bytes[] memory signatures) =
             getDecryptionAttestation(ada, HandleWithProof({handle: foundHandle, proof: _emptyAllowanceProof()}));
+        vm.warp(block.timestamp + 1 days);
         vm.prank(ada);
         vm.expectRevert(AzimuthDaily.NotYourTreasure.selector);
-        game.claimTreasure(signatures);
+        game.claimTreasure(day, signatures);
+    }
+
+    // Dig coordinates are plaintext. If the chain also said who had finished,
+    // the treasure would be that hunter's last dug tile and the day would be
+    // spoiled for everyone still playing.
+    function testNothingPublicMarksAFinderWhileTheDayRuns() public {
+        uint256 day = game.openHunt();
+        processAllOperations();
+        (uint256 x, uint256 y) = _treasure(day);
+        _dig(ada, uint8(x), uint8(y));
+
+        (,, bool finished, uint8 foundOn,) = game.playerState(day, ada);
+        assertFalse(finished, "a finder was visible mid-hunt");
+        assertEq(foundOn, 0, "a winning dig count was visible mid-hunt");
+
+        (,, uint32 finders,,) = game.huntInfo(day);
+        assertEq(finders, 0, "the finder count gave the day away");
+    }
+
+    function testTheTreasureCannotBeClaimedBeforeMidnight() public {
+        uint256 day = game.openHunt();
+        processAllOperations();
+        (uint256 x, uint256 y) = _treasure(day);
+        _dig(ada, uint8(x), uint8(y));
+
+        (,,,, bytes32 foundHandle) = game.playerState(day, ada);
+        (, bytes[] memory signatures) =
+            getDecryptionAttestation(ada, HandleWithProof({handle: foundHandle, proof: _emptyAllowanceProof()}));
+        vm.prank(ada);
+        vm.expectRevert(AzimuthDaily.ClaimAfterMidnight.selector);
+        game.claimTreasure(day, signatures);
     }
 
     function testTheDayCannotBeRevealedWhileItRuns() public {
