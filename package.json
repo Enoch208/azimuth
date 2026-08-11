@@ -1,0 +1,14 @@
+{
+  "name": "azimuth",
+  "private": true,
+  "workspaces": [
+    "contracts"
+  ],
+  "devDependencies": {
+    "@inco/lightning": "^1.0.2",
+    "@openzeppelin/contracts": "^5.3.0",
+    "@safe-global/safe-smart-account": "^1.5.0",
+    "ds-test": "github:dapphub/ds-test",
+    "forge-std": "github:foundry-rs/forge-std"
+  }
+}
