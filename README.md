@@ -38,6 +38,7 @@ all against ciphertext, and routes different answers to different people.
 
 | | |
 |---|---|
+| Play | https://azimuth-inco.vercel.app |
 | Game | [`0x60948d993b9c4f12982f155f36d049f995602a89`](https://sepolia.basescan.org/address/0x60948d993b9c4f12982f155f36d049f995602a89) |
 | Callsigns | [`0x14EFc65668aFEAB2De1DfF8D8a88b8EE5F357f19`](https://sepolia.basescan.org/address/0x14EFc65668aFEAB2De1DfF8D8a88b8EE5F357f19) |
 | Network | Base Sepolia (84532) |
