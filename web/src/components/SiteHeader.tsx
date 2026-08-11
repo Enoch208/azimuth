@@ -2,10 +2,9 @@ import { ConnectButton } from "@/components/ConnectButton";
 import { AzimuthMark } from "@/components/marks/AzimuthMark";
 
 const NAV_LINKS = [
-  { href: "/app", label: "Open vaults" },
+  { href: "/app", label: "Today's hunt" },
   { href: "/app/leaderboard", label: "Leaderboard" },
-  { href: "#how", label: "How a hunt works" },
-  { href: "#encrypted", label: "The mechanic" },
+  { href: "#how", label: "How is it hidden?" },
 ];
 
 export function SiteHeader() {

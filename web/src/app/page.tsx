@@ -1,5 +1,5 @@
 import { ChainOffline } from "@/components/ChainOffline";
-import { Hero } from "@/components/Hero";
+import { DailyHero } from "@/components/daily/DailyHero";
 import { KeeperPing } from "@/components/KeeperPing";
 import { HowItWorks } from "@/components/HowItWorks";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -17,7 +17,7 @@ export default async function Home() {
     <>
       <SiteHeader />
       <main>
-        <Hero />
+        <DailyHero />
         {load.ok ? (
           <VaultList vaults={load.vaults} referenceNow={load.chainTime} />
         ) : (
