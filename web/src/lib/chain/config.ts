@@ -17,6 +17,9 @@ export const publicClient = createPublicClient({
 export const CALLSIGNS_ADDRESS = (process.env.NEXT_PUBLIC_CALLSIGNS_ADDRESS ??
   "0x14EFc65668aFEAB2De1DfF8D8a88b8EE5F357f19") as `0x${string}`;
 
+export const DAILY_ADDRESS = (process.env.NEXT_PUBLIC_DAILY_ADDRESS ??
+  "0x1866B5248E212B83C0bCd1B45b0512475e924649") as `0x${string}`;
+
 export const DEPLOY_BLOCK = 45323091n;
 
 export const EXPLORER_BASE = "https://sepolia.basescan.org";

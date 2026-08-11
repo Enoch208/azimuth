@@ -58,7 +58,7 @@ export function alreadyDug(digs: Dig[], tile: Tile): boolean {
 // Day zero is the first day this game could have run. Kept here so the label a
 // player shares matches the day index the contract used.
 export const DAY_SECONDS = 86_400;
-export const FIRST_DAY = 20_678;
+export const FIRST_DAY = 20_676;
 
 export function dayIndex(nowSeconds: number): number {
   return Math.floor(nowSeconds / DAY_SECONDS);
