@@ -228,7 +228,7 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
               value: String(snapshot.credits),
               hint:
                 snapshot.credits === 0 && !snapshot.found
-                  ? "500 lands free with your first probe"
+                  ? "500 arrives free, as one extra signature on your first probe"
                   : undefined,
             },
             { label: "Closes in", value: formatRemaining(vault.expiresAt, referenceNow) },
@@ -352,7 +352,7 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
                             : result.note
                           : mode === "bearing"
                             ? "Pick where to stand. The compass answer is encrypted to your wallet alone."
-                            : "Pick any cell. Everyone sees whether you ran warmer or colder — nobody sees how close."}
+                            : "Pick any cell. Every probe is a transaction you sign, and everyone sees whether you ran warmer or colder — nobody sees how close."}
                 </p>
                 {busy ? <WaitLadder phase={phase} /> : null}
               </div>
