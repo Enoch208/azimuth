@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify:rollover": "node scripts/verify-rollover.mjs"
   },
   "dependencies": {
     "@inco/lightning-js": "^1.0.2",
