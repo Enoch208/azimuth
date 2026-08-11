@@ -19,11 +19,11 @@ contract Deploy is Script {
         uint256 feeFloat = vm.envOr("FEE_FLOAT_WEI", uint256(0.02 ether));
 
         Seed[5] memory seeds = [
-            Seed(bytes32("FIRST SIGNAL"), 500, 4 hours, 24, 3),
-            Seed(bytes32("DEAD RECKONING"), 1500, 3 hours, 20, 2),
-            Seed(bytes32("BLACK WATER"), 2200, 3 hours, 20, 2),
-            Seed(bytes32("THE ABYSS"), 4000, 2 hours, 14, 1),
-            Seed(bytes32("ZERO BEARING"), 8000, 6 hours, 14, 1)
+            Seed(bytes32("FIRST SIGNAL"), 500, 4 hours, 18, 3),
+            Seed(bytes32("DEAD RECKONING"), 1500, 3 hours, 16, 2),
+            Seed(bytes32("BLACK WATER"), 2200, 3 hours, 16, 2),
+            Seed(bytes32("THE ABYSS"), 4000, 2 hours, 13, 2),
+            Seed(bytes32("ZERO BEARING"), 8000, 6 hours, 13, 2)
         ];
 
         vm.startBroadcast(deployerKey);

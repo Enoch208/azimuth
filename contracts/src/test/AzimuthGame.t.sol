@@ -296,7 +296,7 @@ contract AzimuthGameTest is IncoTest {
         bytes32 handle = game.buyBearing(vaultId, uint8(uint256(gx)), uint8(uint256(gy)));
         processAllOperations();
 
-        assertEq(getUint256Value(euint256.wrap(handle)), expected, "compass direction wrong");
+        assertEq(getUint256Value(euint256.wrap(handle)) / game.BEARING_RINGS(), expected, "compass direction wrong");
         return true;
     }
 
@@ -410,9 +410,14 @@ contract AzimuthGameTest is IncoTest {
         processAllOperations();
 
         assertEq(
-            getUint256Value(euint256.wrap(handle)),
+            getUint256Value(euint256.wrap(handle)) / game.BEARING_RINGS(),
             game.BEARING_AT_TARGET(),
             "a scan taken on the target must not read as a compass direction"
+        );
+        assertEq(
+            getUint256Value(euint256.wrap(handle)) % game.BEARING_RINGS(),
+            0,
+            "a scan taken on the target must sit in the innermost band"
         );
     }
 

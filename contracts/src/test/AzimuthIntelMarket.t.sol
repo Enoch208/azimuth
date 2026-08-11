@@ -87,7 +87,8 @@ contract AzimuthIntelMarketTest is IncoTest {
         processAllOperations();
 
         uint256 value = getUint256Value(euint256.wrap(handle));
-        assertLe(value, game.BEARING_AT_TARGET(), "bearing outside the compass range");
+        assertLe(value / game.BEARING_RINGS(), game.BEARING_AT_TARGET(), "bearing outside the compass range");
+        assertLt(value % game.BEARING_RINGS(), game.BEARING_RINGS(), "distance band outside the ring count");
     }
 
     function testSellerCannotLicenseToThemselves() public {

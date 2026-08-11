@@ -15,13 +15,16 @@ contract AzimuthGame {
     uint256 public constant BEARING_W = 6;
     uint256 public constant BEARING_NW = 7;
     uint256 public constant BEARING_AT_TARGET = 8;
+    uint256 private constant RING_SPAN = 2 * (FIELD_SIZE - 1) * (FIELD_SIZE - 1);
 
     uint256 private constant TAN_67_5_NUMERATOR = 41;
     uint256 private constant TAN_67_5_DENOMINATOR = 17;
 
     uint256 public constant STARTER_CREDITS = 500;
     uint256 public constant PROBE_COST = 2;
-    uint256 public constant SCAN_COST = 20;
+    uint256 public constant SCAN_COST = 10;
+    uint256 public constant BEARING_RINGS = 4;
+    uint16 public constant PUBLICATION_LAG = 4;
     uint64 public constant REPLAY_WINDOW = 10 minutes;
 
     enum VaultStatus {
@@ -76,6 +79,7 @@ contract AzimuthGame {
 
     mapping(uint256 => Vault) private vaults;
     mapping(uint256 => mapping(uint32 => mapping(address => HunterState))) private hunters;
+    mapping(uint256 => mapping(uint32 => bytes32[])) private pendingCloser;
     mapping(uint256 => mapping(uint32 => uint32)) public probeTally;
     mapping(uint256 => mapping(uint32 => uint32)) public scanTally;
     mapping(uint256 => mapping(uint32 => uint32)) public hunterTally;
@@ -250,14 +254,42 @@ contract AzimuthGame {
             e.allowThis(everHit);
             hunter.everHit = everHit;
 
-            e.reveal(closer);
+            e.allow(closer, msg.sender);
             e.reveal(everHit);
+
+            _queueForPublication(vaultId, round, ebool.unwrap(closer));
 
             closerHandle = ebool.unwrap(closer);
             hitHandle = ebool.unwrap(everHit);
         }
 
         emit Probed(vaultId, round, msg.sender, x, y, closerHandle, hitHandle);
+    }
+
+    function _queueForPublication(uint256 vaultId, uint32 round, bytes32 handle) private {
+        bytes32[] storage queue = pendingCloser[vaultId][round];
+        queue.push(handle);
+        if (queue.length > PUBLICATION_LAG) {
+            e.reveal(ebool.wrap(queue[queue.length - PUBLICATION_LAG - 1]));
+        }
+    }
+
+    function pendingPublicationCount(uint256 vaultId, uint32 round) external view returns (uint256) {
+        uint256 queued = pendingCloser[vaultId][round].length;
+        return queued > PUBLICATION_LAG ? PUBLICATION_LAG : queued;
+    }
+
+    function _ringFrom(Vault storage vault, uint8 x, uint8 y) private returns (euint256) {
+        euint256 dx = _absoluteDelta(vault.secretX, x);
+        euint256 dy = _absoluteDelta(vault.secretY, y);
+        euint256 squared = e.add(e.mul(dx, dx), e.mul(dy, dy));
+
+        euint256 band = e.asEuint256(0);
+        for (uint256 index = 1; index < BEARING_RINGS; index++) {
+            uint256 edge = (RING_SPAN * index * index) / (BEARING_RINGS * BEARING_RINGS);
+            band = e.select(e.ge(squared, edge), e.asEuint256(index), band);
+        }
+        return band;
     }
 
     function buyBearing(uint256 vaultId, uint8 x, uint8 y) external returns (bytes32 bearingHandle) {
@@ -272,7 +304,7 @@ contract AzimuthGame {
         hunter.scans += 1;
         scanTally[vaultId][round] += 1;
 
-        euint256 bearing = _bearingFrom(vault, x, y);
+        euint256 bearing = e.add(e.mul(_bearingFrom(vault, x, y), BEARING_RINGS), _ringFrom(vault, x, y));
         e.allowThis(bearing);
         e.allow(bearing, msg.sender);
 
