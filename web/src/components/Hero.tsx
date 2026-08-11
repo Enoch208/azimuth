@@ -36,8 +36,9 @@ export function Hero() {
           </h1>
 
           <p className="mt-7 max-w-lg text-lg leading-relaxed text-ink-soft">
-            Coordinates nobody holds, generated encrypted on Base. You find them by asking the
-            contract questions it answers without revealing the answer.
+            Coordinates generated encrypted on Base that nobody can read while the hunt runs. You
+            find them by asking the contract questions it answers without revealing the answer —
+            then settlement makes them public.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-4">

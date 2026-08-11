@@ -24,7 +24,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://azimuth-inco.verce
 
 export const APP_METADATA = {
   name: "AZIMUTH",
-  description: "An onchain hunt for coordinates nobody knows.",
+  description: "An onchain hunt for coordinates that stay unknown until someone finds them.",
   url: SITE_URL,
   icons: [`${SITE_URL}/icon.svg`],
 };

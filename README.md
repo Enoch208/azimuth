@@ -1,14 +1,16 @@
 # AZIMUTH
 
-An onchain hunt for coordinates nobody knows — not even us. The contract answers questions
-about them without revealing them: public warmer/colder, bearings only your wallet can decrypt.
+An onchain hunt for coordinates that stay unknown to everyone — including us — for as long as
+the hunt runs. The contract answers questions about them without revealing them: public
+warmer/colder, bearings only your wallet can decrypt. They become readable only after a
+verified settlement.
 
 Built on [Inco Lightning](https://docs.inco.org) on Base Sepolia.
 
 ## 30 seconds of gameplay
 
 1. Open a vault. Its coordinates were generated encrypted onchain by `e.randBounded(64)`.
-   No deployer key ever held the plaintext.
+   No deployer key ever held the plaintext, and nobody can read them while the hunt is live.
 2. Click a cell. The contract measures squared distance to coordinates it cannot read,
    compares it against your previous best, and publishes one word: **WARMER** or **COLDER**.
    Every hunter sees it.

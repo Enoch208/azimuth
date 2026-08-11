@@ -22,7 +22,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "AZIMUTH — Find what nobody can see",
   description:
-    "An onchain hunt for coordinates nobody knows. The contract answers questions about them without revealing them: public warmer/colder, bearings only your wallet can decrypt.",
+    "An onchain hunt for coordinates that stay unknown to everyone while the hunt runs. Public warmer/colder, bearings only your wallet can decrypt, and a reveal only after verified settlement.",
 };
 
 export const viewport: Viewport = {
