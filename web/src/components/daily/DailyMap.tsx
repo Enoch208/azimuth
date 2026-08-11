@@ -33,7 +33,7 @@ export function DailyMap({ digs, pending, treasure, disabled, onDig }: DailyMapP
         const spent = alreadyDug(digs, tile);
         const locked = disabled || spent || isPending;
 
-        const style = dug ? TEMPERATURES[dug.temperature] : null;
+        const style = dug && dug.temperature !== null ? TEMPERATURES[dug.temperature] : null;
 
         return (
           <button
@@ -53,7 +53,7 @@ export function DailyMap({ digs, pending, treasure, disabled, onDig }: DailyMapP
             }`}
             style={
               dug
-                ? { background: style?.fill, boxShadow: "none" }
+                ? { background: style?.fill ?? "var(--color-paper-sunk)", boxShadow: "none" }
                 : isPending
                   ? { background: "var(--color-ink)" }
                   : undefined
@@ -61,7 +61,7 @@ export function DailyMap({ digs, pending, treasure, disabled, onDig }: DailyMapP
           >
             {dug ? (
               <span className="animate-land absolute inset-0 flex items-center justify-center drop-shadow-[0_1px_0_rgba(0,0,0,0.25)]">
-                {style?.emoji}
+                {style?.emoji ?? "…"}
               </span>
             ) : null}
             {isTreasure && !dug ? (

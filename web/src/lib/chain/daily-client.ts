@@ -81,16 +81,24 @@ export class DailyClient {
     this.hunters = Number(info[1]);
     this.finders = Number(info[2]);
 
+    // Where a hunter dug is plaintext and always readable. Only the answers need
+    // the covalidator, so the board is rebuilt first and the temperatures are
+    // filled in after. A slow covalidator must never make a spent dig look
+    // unspent.
     const [xs, ys, handles] = trail as readonly [readonly number[], readonly number[], readonly Hex[]];
+    this.digs = xs.map((x, index) => ({ tile: { x, y: ys[index] }, temperature: null }));
+
     if (handles.length > 0) {
-      const lightning = await getLightning();
-      const results = await lightning.attestedDecrypt(this.wallet, [...handles]);
-      this.digs = handles.map((_, index) => ({
-        tile: { x: xs[index], y: ys[index] },
-        temperature: toTemperature(results[index].plaintext.value),
-      }));
-    } else {
-      this.digs = [];
+      try {
+        const lightning = await getLightning();
+        const results = await lightning.attestedDecrypt(this.wallet, [...handles]);
+        this.digs = this.digs.map((entry, index) => ({
+          ...entry,
+          temperature: toTemperature(results[index].plaintext.value),
+        }));
+      } catch {
+        // leave them unread; the board still shows the digs that were spent
+      }
     }
 
     return this.snapshot();
@@ -113,14 +121,33 @@ export class DailyClient {
     const args = events[0].args as unknown as DugArgs;
 
     this.onPhase("reading");
-    const lightning = await getLightning();
-    const [attestation] = await lightning.attestedDecrypt(this.wallet, [args.temperature]);
-    const temperature = toTemperature(attestation.plaintext.value);
+    const temperature = await this.readTemperature(args.temperature);
 
     this.digs.push({ tile, temperature });
 
     this.onPhase("idle");
     return this.snapshot();
+  }
+
+  // The dig is already on chain by this point and has cost the player one of
+  // their six. If the covalidator is slow we keep asking rather than reporting
+  // a failure, because telling someone their move did not happen when it did is
+  // worse than making them wait.
+  private async readTemperature(handle: Hex): Promise<Temperature> {
+    const lightning = await getLightning();
+    let last: unknown = null;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try {
+        const [attestation] = await lightning.attestedDecrypt(this.wallet, [handle]);
+        return toTemperature(attestation.plaintext.value);
+      } catch (error) {
+        last = error;
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+      }
+    }
+    throw new Error(
+      `DIG_LANDED_UNREAD: your dig was recorded on Base, but its result has not arrived yet. ${String(last).slice(0, 80)}`,
+    );
   }
 
   // Scores register after midnight, because a public finder during the day

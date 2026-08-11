@@ -63,3 +63,12 @@ describe("failure copy never shows a player raw chain plumbing", () => {
     expect(copy.note).toBe("Nothing was spent. Try the cell again.");
   });
 });
+
+describe("a dig that landed must never be reported as a no-op", () => {
+  it("tells the player it counted and to reload", () => {
+    const copy = describeFailure("DIG_LANDED_UNREAD: your dig was recorded on Base, but its result has not arrived yet.");
+    expect(copy.title).toBe("Your dig landed, the answer has not");
+    expect(copy.note).not.toMatch(/nothing was spent/i);
+    expect(copy.note).toMatch(/counted/i);
+  });
+});

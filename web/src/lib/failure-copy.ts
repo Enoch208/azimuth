@@ -5,6 +5,13 @@ export interface FailureCopy {
 
 const PATTERNS: { match: RegExp; copy: FailureCopy }[] = [
   {
+    match: /DIG_LANDED_UNREAD/,
+    copy: {
+      title: "Your dig landed, the answer has not",
+      note: "It is recorded on Base and it counted, but the confidential result is still being signed. Reload in a moment and it will be waiting.",
+    },
+  },
+  {
     match: /user rejected|user denied|rejected the request/i,
     copy: {
       title: "You cancelled it",

@@ -36,7 +36,9 @@ export function temperatureAt(guess: Tile, treasure: Tile): Temperature {
 
 export interface Dig {
   tile: Tile;
-  temperature: Temperature;
+  // null while the confidential answer is still being signed. The dig itself is
+  // already on chain and already counted.
+  temperature: Temperature | null;
 }
 
 export function digsLeft(digs: Dig[]): number {
@@ -45,6 +47,10 @@ export function digsLeft(digs: Dig[]): number {
 
 export function isFound(digs: Dig[]): boolean {
   return digs.some((dig) => dig.temperature === 0);
+}
+
+export function anyUnread(digs: Dig[]): boolean {
+  return digs.some((dig) => dig.temperature === null);
 }
 
 export function isOver(digs: Dig[]): boolean {
@@ -74,7 +80,9 @@ export function huntNumber(day: number): number {
 export function shareText(day: number, digs: Dig[]): string {
   const found = isFound(digs);
   const score = found ? `${digs.length}/${DIGS}` : `X/${DIGS}`;
-  const trail = digs.map((dig) => TEMPERATURES[dig.temperature].share).join("");
+  const trail = digs
+    .map((dig) => (dig.temperature === null ? "⬛" : TEMPERATURES[dig.temperature].share))
+    .join("");
   return `AZIMUTH #${huntNumber(day)} ${score}\n${trail}\n\nThe chain knows. You don't.`;
 }
 
