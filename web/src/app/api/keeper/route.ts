@@ -16,7 +16,7 @@ function keeperAccount() {
   return key ? privateKeyToAccount(key as Hex, { nonceManager }) : null;
 }
 
-export async function POST() {
+async function sweep() {
   const account = keeperAccount();
   if (!account) return Response.json({ error: "Keeper is not configured" }, { status: 503 });
 
@@ -70,4 +70,16 @@ export async function POST() {
   }
 
   return Response.json({ respawned, checked: stale.length });
+}
+
+export async function POST() {
+  return sweep();
+}
+
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (secret && request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return Response.json({ error: "Not authorised" }, { status: 401 });
+  }
+  return sweep();
 }
