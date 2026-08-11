@@ -1,0 +1,17 @@
+name: keeper
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Respawn expired vaults
+        run: |
+          response=$(curl -sS --fail-with-body \
+            -H "authorization: Bearer ${{ secrets.KEEPER_SECRET }}" \
+            "${{ vars.KEEPER_URL }}")
+          echo "$response"
