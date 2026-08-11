@@ -8,8 +8,8 @@ import { AzimuthMark } from "@/components/marks/AzimuthMark";
 import { BearingIcon, CrosshairIcon, SealIcon } from "@/components/marks/Icons";
 
 const DESTINATIONS = [
-  { href: "/app", label: "Vaults", Icon: CrosshairIcon, exact: true },
-  { href: "/app/leaderboard", label: "Leaderboard", Icon: SealIcon, exact: true },
+  { href: "/app", label: "Today", Icon: CrosshairIcon, exact: true },
+  { href: "/app/recap", label: "Yesterday", Icon: SealIcon, exact: true },
   { href: "/", label: "About", Icon: BearingIcon, exact: true },
 ];
 

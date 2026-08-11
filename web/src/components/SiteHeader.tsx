@@ -3,7 +3,7 @@ import { AzimuthMark } from "@/components/marks/AzimuthMark";
 
 const NAV_LINKS = [
   { href: "/app", label: "Today's hunt" },
-  { href: "/app/leaderboard", label: "Leaderboard" },
+  { href: "/app/recap", label: "Yesterday's reveal" },
   { href: "#how", label: "How is it hidden?" },
 ];
 
