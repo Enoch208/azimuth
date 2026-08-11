@@ -86,6 +86,11 @@ export function shareText(day: number, digs: Dig[]): string {
   return `AZIMUTH #${huntNumber(day)} ${score}\n${trail}\n\nThe chain knows. You don't.`;
 }
 
+// Tiles read as a chess-style reference so a treasure can be named out loud.
+export function sectorName(tile: Tile): string {
+  return `${String.fromCharCode(65 + tile.x)}${tile.y + 1}`;
+}
+
 export function secondsUntilNextDay(nowSeconds: number): number {
   return DAY_SECONDS - (nowSeconds % DAY_SECONDS);
 }
