@@ -17,6 +17,7 @@ import { LocalHuntClient } from "@/lib/local-hunt-client";
 import type { HuntSnapshot } from "@/lib/hunt-client";
 import type { KeeperMood } from "@/lib/hunt-script";
 import { describeFailure } from "@/lib/failure-copy";
+import { FIELD_CELLS, survivingCells } from "@/lib/candidates";
 import { cellLabel, formatCoordinate, formatRemaining, type Coordinate, type Vault } from "@/lib/types";
 
 const RESULT_COPY = {
@@ -119,6 +120,11 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
   }
 
   useEffect(() => {
+    if (!client.onchain) {
+      setActivity([]);
+      setActivityLoading(false);
+      return;
+    }
     let live = true;
     loadVaultActivity(vault.id, vault.round, vault.createdAt, (partial) => {
       if (live) { setActivity(partial); setActivityLoading(false); }
@@ -126,7 +132,7 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
       .then((entries) => { if (live) { setActivity(entries); setActivityLoading(false); } })
       .catch(() => { if (live) setActivityLoading(false); });
     return () => { live = false; };
-  }, [vault.id, vault.round, vault.createdAt, snapshot.probes.length, snapshot.bearings.length]);
+  }, [client.onchain, vault.id, vault.round, vault.createdAt, snapshot.probes.length, snapshot.bearings.length]);
 
   useEffect(() => {
     if (!(client instanceof ChainHuntClient)) return;
@@ -173,6 +179,10 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
     }
   }, [client]);
 
+  const possible = useMemo(
+    () => survivingCells(snapshot.probes, snapshot.bearings),
+    [snapshot.probes, snapshot.bearings],
+  );
   const settledCoordinate = snapshot.revealed ?? publicReveal;
   const failed = failure ? describeFailure(failure) : null;
   const isFirstProbe = snapshot.probes.length === 1;
@@ -286,12 +296,15 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
                 </button>
               </div>
               <span className="num hidden text-[10px] uppercase tracking-[0.16em] text-ink-faint sm:inline">
-                64 × 64
+                {possible.length < FIELD_CELLS
+                  ? `${possible.length.toLocaleString("en-US")} cells still possible`
+                  : `${FIELD_CELLS.toLocaleString("en-US")} cells · one vault`}
               </span>
             </div>
 
             <div className="aspect-square w-full">
               <HuntBoard
+                possible={possible.length < FIELD_CELLS ? possible : null}
                 probes={snapshot.probes}
                 bearings={snapshot.bearings}
                 revealed={snapshot.revealed}
@@ -327,6 +340,8 @@ export function HuntScreen({ vault, referenceNow }: HuntScreenProps) {
                       ? "This vault has closed"
                       : failed
                       ? failed.title
+                      : outOfProbes && !snapshot.found
+                      ? "Hunt over"
                       : snapshot.found
                         ? "Vault found"
                         : result

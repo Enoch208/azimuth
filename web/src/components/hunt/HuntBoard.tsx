@@ -40,6 +40,7 @@ function conePoints(origin: Coordinate, bearing: keyof typeof BEARING_VECTORS) {
 }
 
 interface HuntBoardProps {
+  possible: Coordinate[] | null;
   probes: ProbeRecord[];
   bearings: BearingRecord[];
   revealed: Coordinate | null;
@@ -51,6 +52,7 @@ interface HuntBoardProps {
 }
 
 export function HuntBoard({
+  possible,
   probes,
   bearings,
   revealed,
@@ -186,6 +188,22 @@ export function HuntBoard({
         ))}
       </g>
 
+      {possible ? (
+        <g pointerEvents="none">
+          {possible.map((cell) => (
+            <rect
+              key={`p-${cell.x}-${cell.y}`}
+              x={cell.x}
+              y={cell.y}
+              width="1"
+              height="1"
+              fill="var(--color-teal-bright)"
+              opacity="0.18"
+            />
+          ))}
+        </g>
+      ) : null}
+
       <rect width={FIELD_SIZE} height={FIELD_SIZE} fill="url(#hunt-cells)" />
 
       {SECTOR_LINES.map((position) => (
@@ -291,24 +309,24 @@ export function HuntBoard({
       {readout ? (
         <g pointerEvents="none">
           <rect
-            x={FIELD_SIZE - 15.5}
+            x={FIELD_SIZE - 17}
             y={-GUTTER + 0.1}
-            width="15.5"
+            width="17"
             height="3.2"
             rx="0.6"
             fill="var(--color-ink)"
           />
           <text
-            x={FIELD_SIZE - 7.75}
+            x={FIELD_SIZE - 8.5}
             y={-GUTTER + 2.4}
             textAnchor="middle"
-            fontSize="1.9"
+            fontSize="1.75"
             letterSpacing="0.12"
             fontWeight="600"
             fill="var(--color-paper)"
           >
             {mode === "probe" && alreadyProbed(readout)
-              ? "Already probed"
+              ? "Spent"
               : `${sectorLabel(readout)} · ${readout.x}, ${readout.y}`}
           </text>
         </g>

@@ -125,6 +125,7 @@ export function TruthReveal({ entries, revealed, you }: TruthRevealProps) {
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="mx-auto aspect-square w-full border-b-2 border-ink lg:max-w-[calc(100dvh-22rem)] lg:border-b-0 lg:border-r-2">
           <HuntBoard
+            possible={null}
             probes={shownProbes}
             bearings={shownBearings}
             revealed={finished ? revealed : null}
