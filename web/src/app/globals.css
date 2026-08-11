@@ -42,6 +42,8 @@
   --animate-spin-slow: sweep 3.2s linear infinite;
   --animate-strike: strike 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-shockwave: shockwave 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-dig-pulse: dig-pulse 1100ms cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-land: land 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 @theme inline {
@@ -86,6 +88,33 @@
   }
   62% {
     transform: rotate(-116deg);
+  }
+}
+
+@keyframes dig-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+}
+
+@keyframes land {
+  0% {
+    transform: scale(0.4) rotate(-8deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
   }
 }
 
