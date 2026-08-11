@@ -20,7 +20,7 @@ export default async function VaultsDashboard() {
             Open vaults
           </span>
           <h1 className="mt-3 font-display text-3xl font-medium tracking-tight sm:text-4xl">
-            {load.vaults.length} hunts running
+            {load.vaults.length} {load.vaults.length === 1 ? "hunt" : "hunts"} running
           </h1>
           <p className="mt-3 max-w-md text-sm text-ink-soft">
             Every vault runs on its own clock. Pick one and start probing — no lobby, no waiting.
