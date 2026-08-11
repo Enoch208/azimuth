@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f5f4ed;
+  --color-paper-deep: #e8e4d5;
+  --color-paper-raised: #fbfaf5;
+  --color-paper-sunk: #ded9c7;
+
+  --color-ink: #100f06;
+  --color-ink-soft: #4a4739;
+  --color-ink-faint: #6e6a59;
+  --color-ink-ghost: #a5a08c;
+
+  --color-amber: #e5a00d;
+  --color-amber-deep: #b87d05;
+  --color-gold: #ffda57;
+  --color-teal: #00745f;
+  --color-teal-bright: #00917a;
+  --color-warmer: #e2543c;
+  --color-colder: #2f7da8;
+  --color-found: #00917a;
+
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+  --shadow-hard-xs: 2px 2px 0 0 #100f06;
+  --shadow-hard-sm: 3px 3px 0 0 #100f06;
+  --shadow-hard: 5px 5px 0 0 #100f06;
+  --shadow-hard-lg: 8px 8px 0 0 #100f06;
+  --shadow-hard-amber: 5px 5px 0 0 #b87d05;
+
+  --radius-chip: 8px;
+  --radius-card: 14px;
+  --radius-panel: 20px;
+
+  --animate-sweep: sweep 4s linear infinite;
+  --animate-ping-slow: ping-slow 2.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-needle: needle 6s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+  --animate-rise: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-bob: bob 6s ease-in-out infinite;
+  --animate-pop: pop 340ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-flash: flash 1100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-spin-slow: sweep 3.2s linear infinite;
+  --animate-strike: strike 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-shockwave: shockwave 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@theme inline {
+  --font-display: var(--font-unbounded), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ping-slow {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes needle {
+  0%,
+  100% {
+    transform: rotate(38deg);
+  }
+  45% {
+    transform: rotate(41deg);
+  }
+  50% {
+    transform: rotate(-114deg);
+  }
+  56% {
+    transform: rotate(-118deg);
+  }
+  62% {
+    transform: rotate(-116deg);
+  }
+}
+
+@keyframes strike {
+  0% {
+    transform: scale(0.72);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shockwave {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(3.4);
+    opacity: 0;
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.15);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes flash {
+  0% {
+    transform: translateY(2px) scale(0.8);
+    opacity: 0;
+  }
+  18% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  62% {
+    transform: translateY(-1px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-7px) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1.6deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(1.6deg);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "tnum";
+  }
+
+  ::selection {
+    background: var(--color-amber);
+    color: var(--color-ink);
+  }
+}
+
+@utility grid-field {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-ink) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-ink) 9%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@utility press {
+  transition:
+    transform 90ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 90ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:active {
+    transform: translate(3px, 3px);
+    box-shadow: var(--shadow-hard-xs);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
