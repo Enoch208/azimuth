@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  FoundGlyph,
+  TemperatureGlyph,
+  UnreadGlyph,
+} from "@/components/marks/TemperatureGlyph";
 import { FIELD, TEMPERATURES, alreadyDug, type Dig, type Tile } from "@/lib/daily";
 
 interface DailyMapProps {
@@ -43,7 +48,7 @@ export function DailyMap({ digs, pending, treasure, disabled, onDig }: DailyMapP
             onClick={() => onDig(tile)}
             aria-label={
               dug
-                ? `Tile ${tile.x + 1}, ${tile.y + 1}: ${style?.label}`
+                ? `Tile ${tile.x + 1}, ${tile.y + 1}: ${style?.label ?? "still arriving"}`
                 : `Dig tile ${tile.x + 1}, ${tile.y + 1}`
             }
             className={`relative aspect-square rounded-[6px] border-2 border-ink text-[clamp(0.85rem,2.6vw,1.5rem)] leading-none transition-transform duration-150 sm:rounded-lg ${
@@ -60,12 +65,21 @@ export function DailyMap({ digs, pending, treasure, disabled, onDig }: DailyMapP
             }
           >
             {dug ? (
-              <span className="animate-land absolute inset-0 flex items-center justify-center drop-shadow-[0_1px_0_rgba(0,0,0,0.25)]">
-                {style?.emoji ?? "…"}
+              <span className="animate-land absolute inset-0 flex items-center justify-center text-ink">
+                {/* A dug tile whose confidential answer has not arrived shows
+                    that it is still arriving. It must never wear one of the
+                    six temperatures it was not given. */}
+                {dug.temperature === null ? (
+                  <UnreadGlyph className="size-[58%] opacity-60" />
+                ) : (
+                  <TemperatureGlyph temperature={dug.temperature} className="size-[58%]" />
+                )}
               </span>
             ) : null}
             {isTreasure && !dug ? (
-              <span className="absolute inset-0 flex items-center justify-center opacity-90">💎</span>
+              <span className="absolute inset-0 flex items-center justify-center text-teal">
+                <FoundGlyph className="size-[58%]" />
+              </span>
             ) : null}
           </button>
         );

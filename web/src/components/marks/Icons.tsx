@@ -56,6 +56,18 @@ export function SealIcon(props: IconProps) {
   );
 }
 
+// SealIcon draws a half-open hasp, which reads as "unlocked" — wrong next to
+// copy that says a result is sealed. This one is shut.
+export function LockIcon(props: IconProps) {
+  return (
+    <Frame {...props}>
+      <rect x="3.4" y="10.2" width="17.2" height="11.2" rx="2.8" />
+      <path d="M7.4 10.2V7a4.6 4.6 0 0 1 9.2 0v3.2" />
+      <circle cx="12" cy="15.8" r="1.8" fill="currentColor" stroke="none" />
+    </Frame>
+  );
+}
+
 export function HuntersIcon(props: IconProps) {
   return (
     <Frame {...props}>

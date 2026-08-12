@@ -44,6 +44,23 @@
   --animate-shockwave: shockwave 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-dig-pulse: dig-pulse 1100ms cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-land: land 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+
+  /* The Keeper's moods. The painted frames carry the character; these carry
+     the reaction. Under prefers-reduced-motion they all collapse and the
+     frame alone still says which mood the Keeper is in. */
+  --animate-keeper-idle: keeper-idle 5.5s ease-in-out infinite;
+  --animate-keeper-listen: keeper-listen 2.4s ease-in-out infinite;
+  --animate-keeper-shiver: keeper-shiver 220ms ease-in-out infinite;
+  --animate-keeper-cold: keeper-cold 4s ease-in-out infinite;
+  --animate-keeper-lean: keeper-lean 2.6s ease-in-out infinite;
+  --animate-keeper-eager: keeper-eager 900ms ease-in-out infinite;
+  --animate-keeper-shake: keeper-shake 160ms ease-in-out infinite;
+  --animate-keeper-burst: keeper-burst 900ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-keeper-slump: keeper-slump 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-keeper-seal: keeper-seal 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-keeper-confused: keeper-confused 2.2s ease-in-out infinite;
+  --animate-spark: spark 1500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-veil: veil 260ms ease-out both;
 }
 
 @theme inline {
@@ -192,6 +209,150 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* --- The Keeper ------------------------------------------------------ */
+
+@keyframes keeper-idle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.8deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(0.8deg);
+  }
+}
+
+/* Leaning toward the map, listening. The wait for a confidential answer is
+   several seconds, so this has to stay watchable rather than twitchy. */
+@keyframes keeper-listen {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) rotate(3deg) scale(1.02);
+  }
+}
+
+@keyframes keeper-shiver {
+  0%,
+  100% {
+    transform: translate(-2px, 0) rotate(-1.2deg);
+  }
+  50% {
+    transform: translate(2px, -1px) rotate(1.2deg);
+  }
+}
+
+@keyframes keeper-cold {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(1px) rotate(-2.5deg);
+  }
+}
+
+@keyframes keeper-lean {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) rotate(2.5deg) scale(1.03);
+  }
+}
+
+@keyframes keeper-eager {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-9px) scale(1.05);
+  }
+}
+
+@keyframes keeper-shake {
+  0%,
+  100% {
+    transform: translate(-3px, 0) rotate(-2deg) scale(1.05);
+  }
+  50% {
+    transform: translate(3px, -2px) rotate(2deg) scale(1.05);
+  }
+}
+
+@keyframes keeper-burst {
+  0% {
+    transform: translateY(0) scale(0.8) rotate(-6deg);
+  }
+  45% {
+    transform: translateY(-22px) scale(1.16) rotate(4deg);
+  }
+  70% {
+    transform: translateY(-6px) scale(1.02) rotate(-2deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes keeper-slump {
+  0% {
+    transform: translateY(-6px) rotate(0deg) scale(1);
+  }
+  100% {
+    transform: translateY(8px) rotate(-7deg) scale(0.94);
+  }
+}
+
+@keyframes keeper-seal {
+  0% {
+    transform: scale(1.06) rotate(2deg);
+  }
+  60% {
+    transform: scale(0.95) rotate(-1deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes keeper-confused {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+/* Victory sparks. Each particle sets its own --dx/--dy/--spin. */
+@keyframes spark {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.2) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(1) rotate(var(--spin));
+  }
+}
+
+@keyframes veil {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 

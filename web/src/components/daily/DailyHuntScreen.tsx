@@ -6,10 +6,16 @@ import { useAccount, useWalletClient } from "wagmi";
 import { DailyMap } from "@/components/daily/DailyMap";
 import { DigResult } from "@/components/daily/DigResult";
 import { RevealCountdown } from "@/components/daily/RevealCountdown";
+import { VictoryOverlay } from "@/components/daily/VictoryOverlay";
 import { ConnectButton } from "@/components/ConnectButton";
+import { KeeperMascot } from "@/components/mascot/KeeperMascot";
+import { keeperStateFor } from "@/components/mascot/keeper-state";
+import { LockIcon } from "@/components/marks/Icons";
+import { TemperatureGlyph, UnreadGlyph } from "@/components/marks/TemperatureGlyph";
 import { DailyClient, type DigPhase } from "@/lib/chain/daily-client";
 import { loadDayStats, loadPlacings, type DayStats, type Placing } from "@/lib/chain/daily-stats";
 import { describeFailure } from "@/lib/failure-copy";
+import { shouldCelebrate } from "@/lib/victory";
 import {
   DIGS,
   TEMPERATURES,
@@ -20,11 +26,13 @@ import {
   type Tile,
 } from "@/lib/daily";
 
+// What the player is told while a dig is in flight. The hunt is the story, not
+// the machinery underneath it — no chain names, no signals, no contracts.
 const PHASE_COPY: Record<DigPhase, string> = {
   idle: "",
-  signing: "Approve the dig in your wallet.",
-  confirming: "Breaking ground. Base is recording where you dug.",
-  reading: "Reading the signal. Only your wallet can hear this one.",
+  signing: "Approve the dig to break ground.",
+  confirming: "Breaking ground…",
+  reading: "The Keeper is listening. Only you will hear the answer.",
 };
 
 interface DailyHuntScreenProps {
@@ -42,6 +50,9 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
   const [loaded, setLoaded] = useState(false);
   const [stats, setStats] = useState<DayStats | null>(null);
   const [yesterday, setYesterday] = useState<Placing[]>([]);
+  // The celebration is a moment, not a mode — once dismissed it stays dismissed
+  // and the Keeper settles into guarding the sealed result.
+  const [dismissed, setDismissed] = useState(false);
 
   const ready = isConnected && chainId === baseSepolia.id && !!walletClient && !!address;
 
@@ -101,26 +112,54 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
     [client, pending, over, digs],
   );
 
+  // One call decides the Keeper's mood for the whole screen.
+  const keeper = keeperStateFor({
+    digs,
+    pending: pending !== null,
+    failed: failed !== null,
+    sealed: dismissed,
+  });
+
+  const celebrating = shouldCelebrate(digs, pending !== null) && !dismissed;
+
+  // An unread dig is a question, not an answer. It never borrows a temperature.
+  const answered = latest && latest.temperature !== null ? latest.temperature : null;
+
   const headline = pending
-    ? "Searching beneath the chain"
+    ? "Listening beneath the map…"
     : failed
       ? failed.title
-      : latest
-        ? `${TEMPERATURES[latest.temperature ?? 5].emoji} ${TEMPERATURES[latest.temperature ?? 5].label}`
-        : "Pick a tile";
+      : answered !== null
+        ? TEMPERATURES[answered].label
+        : latest
+          ? "Still arriving"
+          : "Pick a tile";
 
   const note = pending
     ? PHASE_COPY[phase] || "Working."
     : failed
       ? failed.note
-      : latest
-        ? (latest.temperature ?? 5) <= 2
+      : answered !== null
+        ? answered <= 2
           ? "You are close. Search around this tile."
           : "Too far. Try a different part of the map."
-        : "A treasure is buried somewhere on today's map. Every dig tells you how close you are.";
+        : latest
+          ? "That dig is counted. Its answer is still on its way to you."
+          : "A treasure is buried somewhere on today's map. Every dig tells you how close you are.";
+
+  const tone = pending
+    ? "text-ink-soft"
+    : failed
+      ? "text-warmer"
+      : answered !== null
+        ? TEMPERATURES[answered].tone
+        : "text-ink";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
+      {celebrating ? (
+        <VictoryOverlay day={day} digs={digs} onClose={() => setDismissed(true)} />
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-ink-faint">
@@ -175,15 +214,29 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
               />
             </div>
 
-            <div className="border-t-2 border-ink bg-paper-raised px-4 py-4">
-              <div
-                className={`font-display text-2xl font-medium leading-none tracking-tight sm:text-3xl ${
-                  pending ? "text-ink-soft" : failed ? "text-warmer" : latest ? TEMPERATURES[latest.temperature ?? 5].tone : "text-ink"
-                } ${latest && !pending ? "animate-land" : ""}`}
-              >
-                {headline}
+            <div className="flex items-center gap-4 border-t-2 border-ink bg-paper-raised px-4 py-4">
+              <KeeperMascot state={keeper} size="md" className="-my-3 -ml-1" />
+              <div className="min-w-0 flex-1">
+                <div
+                  className={`flex items-center gap-2.5 font-display text-2xl font-medium leading-none tracking-tight sm:text-3xl ${tone} ${
+                    latest && !pending ? "animate-land" : ""
+                  }`}
+                >
+                  {!pending && !failed && latest ? (
+                    answered !== null ? (
+                      <TemperatureGlyph
+                        temperature={answered}
+                        className="size-7 shrink-0 sm:size-8"
+                      />
+                    ) : (
+                      <UnreadGlyph className="size-7 shrink-0 opacity-60 sm:size-8" />
+                    )
+                  ) : null}
+                  {/* Never truncated — this line is the suspense. */}
+                  <span className="min-w-0 text-balance">{headline}</span>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-ink-soft">{note}</p>
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-ink-soft">{note}</p>
             </div>
           </div>
         </div>
@@ -203,8 +256,9 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
                 <dd className="num font-medium">{stats?.digs ?? "—"}</dd>
               </div>
             </dl>
-            <p className="mt-3 rounded-chip border-2 border-ink bg-gold px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em]">
-              🔒 Results sealed until reveal
+            <p className="mt-3 flex items-center gap-2 rounded-chip border-2 border-ink bg-gold px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em]">
+              <LockIcon className="size-3.5 shrink-0" strokeWidth={2.4} />
+              Results sealed until reveal
             </p>
             <p className="mt-2 text-xs leading-relaxed text-ink-soft">
               Nobody knows who has found it, including us. A public winner would point straight at

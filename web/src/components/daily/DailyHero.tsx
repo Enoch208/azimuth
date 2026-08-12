@@ -1,24 +1,22 @@
 import Link from "next/link";
 import { PracticeHunt } from "@/components/daily/PracticeHunt";
-import { AzimuthMark } from "@/components/marks/AzimuthMark";
+import { SketchUnderline } from "@/components/marks/SketchUnderline";
 
 export function DailyHero() {
   return (
     <section id="top" className="grid-field relative overflow-hidden border-b-2 border-ink">
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-3 py-12 sm:px-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1fr)] lg:gap-14 lg:py-16">
         <div className="animate-rise">
-          <div className="flex items-center gap-3">
-            <AzimuthMark className="size-7 text-ink" />
-            <span className="font-display text-sm font-medium tracking-[0.34em]">AZIMUTH</span>
-          </div>
-
-          <h1 className="mt-7 font-display text-[clamp(2.5rem,7vw,5rem)] font-medium leading-[0.92] tracking-[-0.045em]">
+          <h1 className="font-display text-[clamp(2.5rem,7vw,5rem)] font-medium leading-[0.92] tracking-[-0.045em]">
             The chain knows.
             <br />
-            You don&apos;t.
+            <span className="relative inline-block">
+              You don&apos;t.
+              <SketchUnderline className="absolute -bottom-3 left-0 h-3.5 w-full text-amber sm:-bottom-4 sm:h-5" />
+            </span>
           </h1>
 
-          <p className="mt-6 max-w-md text-lg leading-relaxed text-ink-soft">
+          <p className="mt-9 max-w-md text-lg leading-relaxed text-ink-soft sm:mt-10">
             A treasure is buried somewhere on today&apos;s map. You get six digs. Every dig tells
             you how close you are — and nothing else.
           </p>
