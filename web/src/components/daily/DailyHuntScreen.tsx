@@ -14,6 +14,7 @@ import { LockIcon } from "@/components/marks/Icons";
 import { TemperatureGlyph, UnreadGlyph } from "@/components/marks/TemperatureGlyph";
 import { DailyClient, type DigPhase } from "@/lib/chain/daily-client";
 import { loadDayStats, loadPlacings, type DayStats, type Placing } from "@/lib/chain/daily-stats";
+import { shortenAddress } from "@/lib/chain/callsigns";
 import { describeFailure } from "@/lib/failure-copy";
 import { shouldCelebrate } from "@/lib/victory";
 import {
@@ -174,7 +175,7 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
             {DIGS - digs.length} digs left
           </span>
           <span className="rounded-chip border-2 border-ink bg-paper-raised px-3 py-1.5 shadow-hard-xs">
-            {stats?.hunters ?? "—"} hunters
+            {stats?.hunters ?? "—"} {stats?.hunters === 1 ? "hunter" : "hunters"}
           </span>
           <span className="rounded-chip border-2 border-ink bg-ink px-3 py-1.5 text-paper">
             <RevealCountdown />
@@ -278,9 +279,13 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
               <ol className="mt-3 flex flex-col gap-2">
                 {yesterday.slice(0, 5).map((placing, index) => (
                   <li key={placing.hunter} className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="num truncate">
-                      {["🥇", "🥈", "🥉"][index] ?? "  "}{" "}
-                      {placing.callsign ?? `${placing.hunter.slice(0, 6)}…${placing.hunter.slice(-4)}`}
+                    <span className="num flex min-w-0 items-baseline gap-2">
+                      <span className="shrink-0 text-[11px] font-semibold text-gold">
+                        #{index + 1}
+                      </span>
+                      <span className="truncate">
+                        {placing.callsign ?? shortenAddress(placing.hunter)}
+                      </span>
                     </span>
                     <span className="num font-semibold text-gold">
                       {placing.digs}/{DIGS}

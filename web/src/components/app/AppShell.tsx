@@ -10,7 +10,7 @@ import { BearingIcon, CrosshairIcon, SealIcon } from "@/components/marks/Icons";
 const DESTINATIONS = [
   { href: "/app", label: "Today", Icon: CrosshairIcon, exact: true },
   { href: "/app/recap", label: "Yesterday", Icon: SealIcon, exact: true },
-  { href: "/", label: "About", Icon: BearingIcon, exact: true },
+  { href: "/", label: "How it works", Icon: BearingIcon, exact: true },
 ];
 
 function isActive(pathname: string, href: string, exact: boolean): boolean {

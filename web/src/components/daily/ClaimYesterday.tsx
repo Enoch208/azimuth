@@ -7,6 +7,8 @@ import { DailyClient } from "@/lib/chain/daily-client";
 import { DAILY_ABI } from "@/lib/chain/daily-abi";
 import { DAILY_ADDRESS, publicClient } from "@/lib/chain/config";
 import { describeFailure } from "@/lib/failure-copy";
+import { getLightning } from "@/lib/chain/inco";
+import type { Hex } from "viem";
 
 type State = "hidden" | "offer" | "working" | "done" | "failed";
 
@@ -30,17 +32,32 @@ export function ClaimYesterday({ day }: { day: number }) {
         functionName: "playerState",
         args: [BigInt(day), address],
       })
-      .then((state_) => {
+      .then(async (state_) => {
         if (!live) return;
         const digs = Number(state_[0]);
         const finished = state_[2];
-        setState(digs > 0 && !finished ? "offer" : "hidden");
+        if (digs === 0 || finished) {
+          setState("hidden");
+          return;
+        }
+        // Having dug is not the same as having won. claimTreasure verifies the
+        // encrypted found flag and reverts otherwise, so offering this to a
+        // hunter who missed would promise a score that cannot register. Read
+        // their own flag first — only they can.
+        try {
+          const lightning = await getLightning();
+          const [proof] = await lightning.attestedDecrypt(walletClient!, [state_[4] as Hex]);
+          if (!live) return;
+          setState(Number(proof.plaintext.value) === 1 ? "offer" : "hidden");
+        } catch {
+          if (live) setState("hidden");
+        }
       })
       .catch(() => {});
     return () => {
       live = false;
     };
-  }, [ready, address, day]);
+  }, [ready, address, day, walletClient]);
 
   const register = useCallback(async () => {
     if (!walletClient || !address) return;
