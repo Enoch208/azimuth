@@ -2,10 +2,19 @@
 
 import { useState } from "react";
 import { RevealCountdown } from "@/components/daily/RevealCountdown";
+import { ShareResult } from "@/components/daily/ShareResult";
+import { TrailChips } from "@/components/daily/TrailChips";
 import { KeeperMascot } from "@/components/mascot/KeeperMascot";
 import { LockIcon } from "@/components/marks/Icons";
-import { TemperatureGlyph, UnreadGlyph } from "@/components/marks/TemperatureGlyph";
-import { TEMPERATURES, huntNumber, isFound, shareText, type Dig } from "@/lib/daily";
+import {
+  huntNumber,
+  isFound,
+  secondsToReveal,
+  shareText,
+  type Dig,
+} from "@/lib/daily";
+import { sealedCard } from "@/lib/result-card";
+import { useHunter } from "@/lib/use-hunter";
 import { defeatLine, huntOutcome, victoryLine } from "@/lib/victory";
 
 interface DigResultProps {
@@ -17,6 +26,20 @@ export function DigResult({ day, digs }: DigResultProps) {
   const [copied, setCopied] = useState(false);
   const won = isFound(digs);
   const outcome = huntOutcome(digs);
+  const { address, callsign } = useHunter();
+
+  // Today's card is sealed by construction: it cannot carry a coordinate, a
+  // rank or a distance, so posting it cannot end the day for anyone else.
+  const makeCard = () =>
+    sealedCard({
+      day,
+      address: address ?? "",
+      callsign,
+      found: won,
+      digsUsed: outcome.digsUsed,
+      trail: outcome.trail,
+      secondsToReveal: secondsToReveal(),
+    });
 
   const copy = async () => {
     try {
@@ -50,29 +73,7 @@ export function DigResult({ day, digs }: DigResultProps) {
             {won ? victoryLine(digs) : defeatLine()}
           </p>
 
-          <ol className="mt-5 flex flex-wrap items-center gap-2" aria-label="Your dig trail">
-            {outcome.trail.map((temperature, index) => (
-              <li
-                key={index}
-                className="flex size-10 items-center justify-center rounded-[8px] border-2 border-ink text-ink"
-                style={{
-                  background:
-                    temperature === null
-                      ? "var(--color-paper-sunk)"
-                      : TEMPERATURES[temperature].fill,
-                }}
-              >
-                {temperature === null ? (
-                  <UnreadGlyph className="size-5 opacity-60" />
-                ) : (
-                  <TemperatureGlyph temperature={temperature} className="size-5" />
-                )}
-                <span className="sr-only">
-                  {temperature === null ? "Still arriving" : TEMPERATURES[temperature].label}
-                </span>
-              </li>
-            ))}
-          </ol>
+          <TrailChips trail={outcome.trail} className="mt-5" />
 
           <div
             className={`mt-6 rounded-card border-2 px-4 py-3 ${won ? "border-paper/25 bg-paper/10" : "border-ink bg-paper-raised"}`}
@@ -87,15 +88,19 @@ export function DigResult({ day, digs }: DigResultProps) {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={copy}
-            className={`press mt-5 inline-flex min-h-11 items-center rounded-chip border-2 border-ink px-5 text-xs font-semibold uppercase tracking-[0.12em] shadow-hard-xs ${
-              won ? "bg-gold text-ink" : "bg-amber"
-            }`}
-          >
-            {copied ? "Copied" : "Copy result"}
-          </button>
+          {address ? (
+            <ShareResult makeCard={makeCard} onCopyText={copy} copied={copied} className="mt-5" />
+          ) : (
+            <button
+              type="button"
+              onClick={copy}
+              className={`press mt-5 inline-flex min-h-11 items-center rounded-chip border-2 border-ink px-5 text-xs font-semibold uppercase tracking-[0.12em] shadow-hard-xs ${
+                won ? "bg-gold text-ink" : "bg-amber"
+              }`}
+            >
+              {copied ? "Copied" : "Copy result"}
+            </button>
+          )}
         </div>
       </div>
     </section>

@@ -95,6 +95,12 @@ export function secondsUntilNextDay(nowSeconds: number): number {
   return DAY_SECONDS - (nowSeconds % DAY_SECONDS);
 }
 
+// How long until the map opens, read at the moment it is asked for. Lives here
+// rather than in a component so the clock is never touched during a render.
+export function secondsToReveal(): number {
+  return secondsUntilNextDay(Math.floor(Date.now() / 1000));
+}
+
 export function formatCountdown(seconds: number): string {
   const whole = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(whole / 3600);

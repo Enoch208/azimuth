@@ -3,9 +3,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { KeeperMascot } from "@/components/mascot/KeeperMascot";
+import { ShareResult } from "@/components/daily/ShareResult";
 import { LockIcon } from "@/components/marks/Icons";
 import { TemperatureGlyph, UnreadGlyph } from "@/components/marks/TemperatureGlyph";
-import { TEMPERATURES, huntNumber, type Dig } from "@/lib/daily";
+import { TEMPERATURES, huntNumber, secondsToReveal, type Dig } from "@/lib/daily";
+import { sealedCard } from "@/lib/result-card";
+import { useHunter } from "@/lib/use-hunter";
 import { huntOutcome, victoryLine } from "@/lib/victory";
 
 // Fixed rather than random so the burst is identical every time and nothing
@@ -50,6 +53,20 @@ interface VictoryOverlayProps {
 export function VictoryOverlay({ day, digs, onClose }: VictoryOverlayProps) {
   const panel = useRef<HTMLDivElement>(null);
   const outcome = huntOutcome(digs);
+  const { address, callsign } = useHunter();
+
+  // Shared straight from the climax, and still sealed: no rank, no distance,
+  // nothing that would help anyone else find today's treasure.
+  const makeCard = () =>
+    sealedCard({
+      day,
+      address: address ?? "",
+      callsign,
+      found: true,
+      digsUsed: outcome.digsUsed,
+      trail: outcome.trail,
+      secondsToReveal: secondsToReveal(),
+    });
   // The Keeper celebrates, then locks itself — the animation says what the
   // sealed copy says, at the moment the copy appears. With motion reduced it
   // arrives already sealed instead of performing the beat.
@@ -189,10 +206,11 @@ export function VictoryOverlay({ day, digs, onClose }: VictoryOverlayProps) {
           </div>
 
           <div className="mt-6 flex flex-wrap justify-center gap-3">
+            {address ? <ShareResult makeCard={makeCard} /> : null}
             <button
               type="button"
               onClick={onClose}
-              className="press rounded-chip border-2 border-ink bg-gold px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] shadow-hard-xs"
+              className="press rounded-chip border-2 border-ink bg-paper-raised px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] shadow-hard-xs"
             >
               View my trail
             </button>
