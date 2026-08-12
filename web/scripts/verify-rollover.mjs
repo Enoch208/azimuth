@@ -36,8 +36,11 @@ check("yesterday had a hunt", opened, `hunters=${hunters}`);
 
 check("the map was opened by the scheduler", revealed);
 
+const ZERO = `0x${"0".repeat(64)}`;
 const [xHandle, yHandle] = await read("treasureHandles", [BigInt(yesterday)]);
-check("treasure handles exist", xHandle !== `0x${"0".repeat(64)}`);
+// Both coordinates matter: a hunt with only one handle set would decrypt to a
+// treasure sitting on row zero for everyone.
+check("treasure handles exist", xHandle !== ZERO && yHandle !== ZERO, `x=${xHandle.slice(0, 10)}… y=${yHandle.slice(0, 10)}…`);
 
 const event = getAbiItem({ abi: ABI, name: "Dug" });
 const latest = await client.getBlockNumber();
