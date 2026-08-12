@@ -2,14 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useAccount } from "wagmi";
 import { DailyMap } from "@/components/daily/DailyMap";
 import { ClaimYesterday } from "@/components/daily/ClaimYesterday";
 import { TrailChips } from "@/components/daily/TrailChips";
+import { ShareResult } from "@/components/daily/ShareResult";
+import { useHuntStatus } from "@/components/app/hunt-status";
 import { KeeperMascot } from "@/components/mascot/KeeperMascot";
 import { shortenAddress } from "@/lib/chain/callsigns";
 import { DIGS, huntNumber, sectorName, type Dig } from "@/lib/daily";
 import { missLine, standingsFor, type Standing } from "@/lib/standings";
+import { revealedCard, revealedHeadline } from "@/lib/result-card";
+import { usePlayerRecord } from "@/lib/use-player-record";
+import { useHunter } from "@/lib/use-hunter";
 import type { Recap } from "@/lib/chain/recap";
 
 const STEP_MS = 520;
@@ -25,7 +29,8 @@ function resultLine(row: Standing): string {
 }
 
 export function RecapScreen({ recap }: RecapScreenProps) {
-  const { address } = useAccount();
+  const { address, callsign } = useHunter();
+  const { status } = useHuntStatus();
   const [selected, setSelected] = useState(0);
   const [step, setStep] = useState(0);
 
@@ -46,6 +51,27 @@ export function RecapScreen({ recap }: RecapScreenProps) {
   const mine = address
     ? standings.find((entry) => entry.hunter.toLowerCase() === address.toLowerCase())
     : undefined;
+
+  // The card, the rail and this panel all read the same standing and the same
+  // record. Nothing re-derives a rank or a streak of its own.
+  const record = usePlayerRecord(address, status.day);
+  const myTrail = mine
+    ? (byHunter.get(mine.hunter.toLowerCase())?.digs ?? []).map((entry) => entry.temperature)
+    : [];
+
+  const makeCard = () =>
+    revealedCard({
+      day: recap.day,
+      address: address ?? "",
+      callsign,
+      found: mine?.found ?? false,
+      digsUsed: mine?.digsUsed ?? 0,
+      trail: myTrail,
+      rank: mine?.rank ?? 0,
+      score: mine?.score ?? 0,
+      closest: mine?.closest ?? null,
+      streak: record?.streak ?? 0,
+    });
 
   useEffect(() => {
     if (!trail || step >= trail.digs.length) return;
@@ -104,20 +130,30 @@ export function RecapScreen({ recap }: RecapScreenProps) {
               Your result
             </p>
             <h2 className="mt-1.5 font-display text-3xl font-medium tracking-tight sm:text-4xl">
-              {mine.found
-                ? "Treasure found"
-                : mine.closest !== null && mine.closest <= 2
-                  ? "So close"
-                  : "The trail went cold"}
+              {revealedHeadline(mine.found, mine.closest)}
             </h2>
-            <p className="num mt-2 text-sm text-ink-soft">
-              {resultLine(mine)} · Daily rank #{mine.rank} · {mine.score} pts
+            <p className="num mt-1.5 text-sm text-ink-soft">
+              {callsign ?? shortenAddress(mine.hunter)}
+              {" · "}
+              {resultLine(mine)}
             </p>
-            <TrailChips
-              trail={(byHunter.get(mine.hunter.toLowerCase())?.digs ?? []).map((d) => d.temperature)}
-              size="sm"
-              className="mt-4"
-            />
+            <div className="num mt-3 flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.12em]">
+              <span className="rounded-chip border-2 border-ink bg-gold px-2.5 py-1.5">
+                Rank #{mine.rank}
+              </span>
+              <span className="rounded-chip border-2 border-ink bg-paper-raised px-2.5 py-1.5">
+                {mine.score} pts
+              </span>
+              {record && record.streak > 0 ? (
+                <span className="rounded-chip border-2 border-ink bg-paper-raised px-2.5 py-1.5">
+                  {record.streak} day streak
+                </span>
+              ) : null}
+            </div>
+            <TrailChips trail={myTrail} size="sm" className="mt-3" />
+            {/* Yesterday is public, so this card may carry rank, score and how
+                close the hunt came. Same standings and record the rail reads. */}
+            <ShareResult makeCard={makeCard} className="mt-4" />
           </div>
         </section>
       ) : null}

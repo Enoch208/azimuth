@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { baseSepolia } from "@reown/appkit/networks";
 import { useAccount, useWalletClient } from "wagmi";
+import { useHuntStatus } from "@/components/app/hunt-status";
 import { DailyMap } from "@/components/daily/DailyMap";
 import { DigResult } from "@/components/daily/DigResult";
 import { RevealCountdown } from "@/components/daily/RevealCountdown";
@@ -55,6 +56,8 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
   // and the Keeper settles into guarding the sealed result.
   const [dismissed, setDismissed] = useState(false);
 
+  const { publish } = useHuntStatus();
+
   const ready = isConnected && chainId === baseSepolia.id && !!walletClient && !!address;
 
   const client = useMemo(
@@ -64,12 +67,18 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
 
   useEffect(() => {
     let live = true;
-    loadDayStats(day).then((next) => live && setStats(next)).catch(() => {});
+    loadDayStats(day)
+      .then((next) => {
+        if (!live) return;
+        setStats(next);
+        publish({ day, hunters: next.hunters });
+      })
+      .catch(() => {});
     loadPlacings(day - 1).then((next) => live && setYesterday(next)).catch(() => {});
     return () => {
       live = false;
     };
-  }, [day, digs.length]);
+  }, [day, digs.length, publish]);
 
   useEffect(() => {
     if (!client) return;
@@ -80,6 +89,7 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
         if (!live) return;
         setDigs(snapshot.digs);
         setLoaded(true);
+        publish({ day, digs: snapshot.digs, loaded: true });
       })
       .catch((error) => {
         if (!live) return;
@@ -89,7 +99,7 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
     return () => {
       live = false;
     };
-  }, [client]);
+  }, [client, day, publish]);
 
   const over = isOver(digs);
   const latest = digs[digs.length - 1];
@@ -100,17 +110,20 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
       if (!client || pending || over || alreadyDug(digs, tile)) return;
       setPending(tile);
       setFailure(null);
+      publish({ pending: true });
       try {
         const snapshot = await client.dig(tile);
         setDigs(snapshot.digs);
+        publish({ digs: snapshot.digs });
       } catch (error) {
         setFailure(error instanceof Error ? error.message : String(error));
       } finally {
         setPhase("idle");
         setPending(null);
+        publish({ pending: false });
       }
     },
-    [client, pending, over, digs],
+    [client, pending, over, digs, publish],
   );
 
   // One call decides the Keeper's mood for the whole screen.
@@ -170,7 +183,7 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
             Find today&apos;s hidden treasure
           </h1>
         </div>
-        <div className="num flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em]">
+        <div className="num flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] lg:hidden">
           <span className="rounded-chip border-2 border-ink bg-paper-raised px-3 py-1.5 shadow-hard-xs">
             {DIGS - digs.length} digs left
           </span>
@@ -204,7 +217,7 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
             <DigResult day={day} digs={digs} />
           ) : null}
 
-          <div className="overflow-hidden rounded-panel border-2 border-ink bg-paper-deep shadow-hard-lg">
+          <div className="w-full overflow-hidden rounded-panel border-2 border-ink bg-paper-deep shadow-hard-lg lg:max-w-[38rem]">
             <div className="bg-paper-raised p-2 sm:p-4">
               <DailyMap
                 digs={digs}
@@ -243,25 +256,12 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
         </div>
 
         <div className="flex flex-col gap-5">
-          <section className="rounded-card border-2 border-ink bg-paper-raised p-5 shadow-hard-sm">
-            <h2 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-faint">
-              Today
-            </h2>
-            <dl className="mt-3 flex flex-col gap-2 text-sm">
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-ink-soft">Hunters</dt>
-                <dd className="num font-medium">{stats?.hunters ?? "—"}</dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-ink-soft">Digs placed</dt>
-                <dd className="num font-medium">{stats?.digs ?? "—"}</dd>
-              </div>
-            </dl>
-            <p className="mt-3 flex items-center gap-2 rounded-chip border-2 border-ink bg-gold px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em]">
+          <section className="rounded-card border-2 border-ink bg-gold p-5 shadow-hard-sm">
+            <h2 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em]">
               <LockIcon className="size-3.5 shrink-0" strokeWidth={2.4} />
-              Results sealed until reveal
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+              Sealed until reveal
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed">
               Nobody knows who has found it, including us. A public winner would point straight at
               the treasure — it would be their last dug tile.
             </p>
