@@ -1,4 +1,5 @@
 import { AzimuthMark } from "@/components/marks/AzimuthMark";
+import { DIGS, FIELD } from "@/lib/daily";
 
 export function SiteFooter() {
   return (
@@ -17,7 +18,13 @@ export function SiteFooter() {
         <div className="flex flex-wrap gap-x-12 gap-y-6 text-sm">
           <div>
             <div className="text-[10px] uppercase tracking-[0.16em] text-paper/50">Field</div>
-            <div className="num mt-2">64 × 64 · 4,096 cells</div>
+            <div className="num mt-2">
+              {FIELD} × {FIELD} · {FIELD * FIELD} tiles
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.16em] text-paper/50">Digs</div>
+            <div className="num mt-2">{DIGS} a day</div>
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-[0.16em] text-paper/50">
