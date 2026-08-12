@@ -57,7 +57,8 @@ export function huntScore(found: boolean, digsUsed: number, closest: number | nu
   return found ? foundScore(digsUsed) : missScore(closest);
 }
 
-interface Measured extends Omit<Standing, "rank"> {}
+// A standing before it knows where it placed.
+type Measured = Omit<Standing, "rank">;
 
 function measure(treasure: Tile, trail: RevealedTrail): Measured {
   const distances = trail.digs.map((dig) => chebyshev(dig.tile, treasure));
