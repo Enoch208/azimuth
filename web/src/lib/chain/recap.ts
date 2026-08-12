@@ -26,32 +26,68 @@ function toTemperature(value: unknown): Temperature {
   return Math.min(5, Math.max(0, n)) as Temperature;
 }
 
+const DAY_SECONDS = 86_400;
+// Base Sepolia targets two second blocks. Only used to guess which slice of
+// chain a day lives in; the margin below absorbs the drift.
+const BLOCK_SECONDS = 2;
+const MARGIN_BLOCKS = BigInt(2_400);
+// The public RPC will throttle a wide fan-out, so slices go out in waves.
+const WAVE = 6;
+
+// Which blocks could possibly hold this day's digs. Scanning a fixed 48 hour
+// lookback meant ~46 sequential requests; a single UTC day is roughly half
+// that, and it can be bracketed instead of walked from the far end.
+async function dayWindow(day: number): Promise<{ from: bigint; to: bigint }> {
+  const head = await publicClient.getBlock();
+  const now = Number(head.timestamp);
+  const latest = head.number;
+
+  const behind = (seconds: number) => BigInt(Math.max(0, Math.ceil(seconds / BLOCK_SECONDS)));
+  const clamp = (block: bigint) => (block < BigInt(0) ? BigInt(0) : block > latest ? latest : block);
+
+  const from = clamp(latest - behind(now - day * DAY_SECONDS) - MARGIN_BLOCKS);
+  const endedSecondsAgo = now - (day + 1) * DAY_SECONDS;
+  const to = endedSecondsAgo <= 0 ? latest : clamp(latest - behind(endedSecondsAgo) + MARGIN_BLOCKS);
+
+  return { from, to: to < from ? from : to };
+}
+
 async function dugOn(day: number) {
   const event = getAbiItem({ abi: DAILY_ABI, name: "Dug" }) as AbiEvent;
-  const latest = await publicClient.getBlockNumber();
-  const lookback = BigInt(86_400);
-  let from = latest > lookback ? latest - lookback : BigInt(0);
+  const { from, to } = await dayWindow(day);
+
+  const slices: { fromBlock: bigint; toBlock: bigint }[] = [];
+  for (let start = from; start <= to; start += MAX_RANGE + BigInt(1)) {
+    const end = start + MAX_RANGE > to ? to : start + MAX_RANGE;
+    slices.push({ fromBlock: start, toBlock: end });
+  }
 
   const rows: { hunter: string; x: number; y: number; handle: Hex }[] = [];
-  while (from <= latest) {
-    const to = from + MAX_RANGE > latest ? latest : from + MAX_RANGE;
-    const logs = await publicClient.getLogs({
-      address: DAILY_ADDRESS,
-      event,
-      args: { day: BigInt(day) },
-      fromBlock: from,
-      toBlock: to,
-    });
-    for (const log of logs) {
-      const args = log.args as unknown as { hunter: string; x: number; y: number; temperature: Hex };
-      rows.push({ hunter: args.hunter, x: args.x, y: args.y, handle: args.temperature });
+  for (let i = 0; i < slices.length; i += WAVE) {
+    const wave = await Promise.all(
+      slices.slice(i, i + WAVE).map((slice) =>
+        publicClient.getLogs({ address: DAILY_ADDRESS, event, args: { day: BigInt(day) }, ...slice }),
+      ),
+    );
+    for (const logs of wave) {
+      for (const log of logs) {
+        const args = log.args as unknown as { hunter: string; x: number; y: number; temperature: Hex };
+        rows.push({ hunter: args.hunter, x: args.x, y: args.y, handle: args.temperature });
+      }
     }
-    from = to + BigInt(1);
   }
   return rows;
 }
 
+// An opened day never changes again: the treasure is public, the trails are
+// public, and no further digs can land on it. Re-decrypting all of that on
+// every request was most of the minute the page used to take.
+const opened = new Map<number, Recap>();
+
 export async function loadRecap(day: number): Promise<Recap> {
+  const cached = opened.get(day);
+  if (cached) return cached;
+
   const info = await publicClient.readContract({
     address: DAILY_ADDRESS,
     abi: DAILY_ABI,
@@ -110,5 +146,11 @@ export async function loadRecap(day: number): Promise<Recap> {
     return a.digs.length - b.digs.length;
   });
 
-  return { day, revealed: true, treasure, trails };
+  const recap: Recap = { day, revealed: true, treasure, trails };
+  // Only a fully-read day is worth keeping. A trail whose temperatures have not
+  // been revealed yet would otherwise be cached with holes in it forever.
+  if (trails.every((trail) => trail.digs.every((dig) => dig.temperature !== null))) {
+    opened.set(day, recap);
+  }
+  return recap;
 }
