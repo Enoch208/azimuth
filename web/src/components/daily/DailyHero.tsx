@@ -28,12 +28,12 @@ export function DailyHero() {
             >
               Start today&apos;s hunt
             </Link>
-            <a
-              href="#how"
+            <Link
+              href="/app/recap"
               className="press inline-flex min-h-11 items-center rounded-chip border-2 border-ink bg-paper-raised px-6 py-3.5 text-sm font-semibold uppercase tracking-[0.12em] shadow-hard-xs"
             >
-              How is it hidden?
-            </a>
+              Yesterday&apos;s reveal
+            </Link>
           </div>
 
           <p className="mt-6 text-xs text-ink-faint">

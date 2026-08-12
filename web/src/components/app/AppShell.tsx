@@ -20,8 +20,6 @@ function isActive(pathname: string, href: string, exact: boolean): boolean {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const onBoard = pathname.startsWith("/app/vault/");
-
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="hidden border-r-2 border-ink bg-paper-raised lg:flex lg:flex-col">
@@ -35,7 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <nav className="flex flex-col gap-1.5 border-t-2 border-paper-sunk pt-6">
             {DESTINATIONS.map((item) => {
-              const active = isActive(pathname, item.href, item.exact) || (onBoard && item.href === "/app");
+              const active = isActive(pathname, item.href, item.exact);
               return (
                 <Link
                   key={item.href}
@@ -68,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t-2 border-ink bg-paper-raised lg:hidden">
           {DESTINATIONS.map((item) => {
-            const active = isActive(pathname, item.href, item.exact) || (onBoard && item.href === "/app");
+            const active = isActive(pathname, item.href, item.exact);
             return (
               <Link
                 key={item.href}

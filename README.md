@@ -152,6 +152,16 @@ The person who helped build it then looked at the finished screen and said *"I d
 understand this game."*
 
 Relative feedback was the problem. `COLDER` means *further than your own closest probe so far*,
-which nobody can hold in their head across twenty moves. `HOT` means something on its own. That
-contract and its tests are still in `contracts/`, and the simulation that measured the old
-game's information economy is still in `contracts/sim/`.
+which nobody can hold in their head across twenty moves. `HOT` means something on its own.
+
+That game has been cut from `main` so this repository describes one product. It is preserved
+in full — contract, 57 passing tests, and its whole frontend — at the `pre-daily-pivot` tag
+and the `legacy-vault-game` branch:
+
+```bash
+git show pre-daily-pivot:contracts/src/AzimuthGame.sol
+git checkout legacy-vault-game
+```
+
+The simulation that measured the old game's information economy is still in `contracts/sim/`,
+alongside the one that tuned the daily ladder.
