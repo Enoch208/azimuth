@@ -2,8 +2,8 @@
 
 **The chain knows. You don't.**
 
-One treasure is buried somewhere on today's map. You get six digs. Every dig tells you how
-close you are and nothing else, and what it tells *you* is readable by nobody else.
+One treasure is buried somewhere on today's map. Everyone hunts the same one. You get six digs,
+and every dig tells you only how close you are — in an answer nobody else can read.
 
 Play it: **https://azimuth-inco.vercel.app**
 
@@ -12,7 +12,7 @@ Built on [Inco Lightning](https://docs.inco.org) on Base Sepolia.
 ## The game
 
 ```
-11 × 11 map · 6 digs · one treasure · everyone plays the same board
+11 × 11 map · 6 digs · one sealed guess · one treasure · everyone plays the same board
 
 💎 FOUND    🔥 BURNING    🌡 HOT    🌤 WARM    ❄️ COLD    🥶 FREEZING
 ```
@@ -21,21 +21,29 @@ Built on [Inco Lightning](https://docs.inco.org) on Base Sepolia.
    day. No key anywhere holds the plaintext.
 2. Click a tile. The contract measures the distance to a coordinate it cannot read and answers
    with a temperature — decrypted to **your wallet alone**.
-3. Everyone hunts the same treasure. Rivals can see *where* you dug. They cannot see what it
-   told you.
-4. After midnight the map opens: the treasure, every trail and every score become public, and
-   the day is scored on fewest digs.
+3. Everyone hunts the same treasure. You can watch where rivals dig, in real time, on the same
+   map. You cannot see what any of it told them.
+4. Spend all six digs without finding it and you get **one sealed guess**: a tile you encrypt
+   yourself, compared against a coordinate the contract cannot read either.
+5. After midnight UTC the map opens: the treasure, every trail, every sealed guess and every
+   score become public, and the day is scored.
 
-## Why this needs confidential compute
+## Every move is public. Every clue is private.
 
-```solidity
-struct Hunt { uint8 x; uint8 y; }        // one eth_getStorageAt and the day is over
-struct Hunt { euint256 x; euint256 y; }  // ciphertext the contract still computes on
-```
+That sentence is the whole design, and the board is built to make it visible rather than
+claimed.
 
-A shared daily target is only a game if nobody can read it. That includes us.
+| Public while the hunt runs | Private while the hunt runs | Public after midnight |
+|---|---|---|
+| Which wallet dug | The treasure's coordinates | The treasure's coordinates |
+| Which tile they dug | What each dig answered | Every trail and every answer |
+| How many digs they have spent | Whether anyone has found it | Who found it, and in how many digs |
+| That a hunter sealed a guess | Which tile they guessed, and whether it landed | Every sealed guess and its verdict |
 
-## Only what would spoil the game is hidden
+A rival can follow every step you take and learn nothing, because the step is public and the
+answer is not. That is a game you cannot build on a transparent chain.
+
+## The leak that shaped the contract
 
 This is the part worth reading, because getting it wrong is easy.
 
@@ -50,14 +58,35 @@ around a state transition* leaked it.
 
 So scoring is deliberately delayed until the map opens. A player still sees their own result
 the instant they dig it, because their temperature is decrypted to their wallet and nowhere
-else. Only the public record waits. Two tests hold this shut:
+else. Only the public record waits. Three tests hold this shut:
 
 - `testNothingPublicMarksAFinderWhileTheDayRuns`
 - `testTheTreasureCannotBeClaimedBeforeMidnight`
+- `testNothingPublicSaysWhetherAGuessLanded`
 
-Nothing here is encrypted for the sake of it. The coordinate is hidden because reading it ends
-the game; each hunter's answers are hidden because copying them ends the game; who won is
-hidden because naming them points at the treasure. Everything else is public.
+You can see the rule holding on chain right now. Day 20678 had six hunters and two of them dug
+the treasure up hours ago; `huntInfo` still reports **0 finders** until the day closes.
+
+## The sealed guess
+
+Every dig is public the moment it lands, which is exactly what makes a last move worth hiding.
+When a hunter's six digs are gone they may name one more tile — and that one they encrypt
+themselves.
+
+```solidity
+euint256 tile = e.newEuint256(tileCiphertext, msg.sender);   // the hunter's secret
+ebool right = e.eq(e.add(hunt.x, e.mul(hunt.y, FIELD)), tile); // against the contract's secret
+e.allow(right, msg.sender);                                   // an answer only they can open
+```
+
+It is the only move on the board nobody can watch, and the only ciphertext in Azimuth the
+contract did not mint itself. Every other secret here is born inside `randBounded`; this one
+arrives from the player, and the two are compared without either side being decrypted.
+
+The tile travels as one number, `x + 11 * y`, so a guess is a single ciphertext and a single
+equality. A right guess folds into the same flag a dug find sets, so settlement, scoring and
+the recap needed no new concepts. A sealed find ranks below everyone who dug the treasure up
+and above everyone who missed.
 
 ## How Inco is used
 
@@ -67,18 +96,26 @@ hidden because naming them points at the treasure. Everything else is public.
 | Distance to a secret | `e.max`/`e.min`/`e.sub` over `euint256`, never decrypted |
 | Temperature ladder | `e.div(e.add(e.max(dx, dy), 1), 2)` — Chebyshev banded in twos |
 | Answers only you can read | `e.allow(temperature, msg.sender)` |
+| **A secret the player brings** | **`e.newEuint256(ciphertext, msg.sender)` for a sealed guess** |
+| Comparing two secrets | `e.eq` over the guess and the treasure, both encrypted |
 | Proving you found it | `e.verifyDecryption(found, true, covalidatorSignatures)` |
-| Opening the map | `e.reveal` on the treasure and every trail, after midnight |
+| Opening the map | `e.reveal` on the treasure, every trail and every guess, after midnight |
 | Sponsored fees | the contract holds ETH and pays Inco's per-operation fee |
+
+Both directions are covered: secrets the contract generates and never reveals, and secrets the
+player generates that the contract computes on without ever seeing.
 
 ## Live
 
 | | |
 |---|---|
-| Daily hunt | [`0x1866B5248E212B83C0bCd1B45b0512475e924649`](https://sepolia.basescan.org/address/0x1866B5248E212B83C0bCd1B45b0512475e924649) |
+| Daily hunt | [`0x86C59B978B14bc8B2914A70548baAB2700bd58d6`](https://sepolia.basescan.org/address/0x86C59B978B14bc8B2914A70548baAB2700bd58d6) |
 | Callsigns | [`0x14EFc65668aFEAB2De1DfF8D8a88b8EE5F357f19`](https://sepolia.basescan.org/address/0x14EFc65668aFEAB2De1DfF8D8a88b8EE5F357f19) |
 | Network | Base Sepolia (84532) |
 | Inco Lightning | `0x4b9911b0191B0b6a6eA8F2Ed562e20Cff5AC8624` |
+
+Transaction-level evidence, including a wallet failing to decrypt another wallet's answer, is
+in [`evidence/deployment.md`](evidence/deployment.md).
 
 ## Sized by simulation, not by feel
 
@@ -98,9 +135,13 @@ four digs instead of five.
 
 ## Measured, not claimed
 
+Timed against this deployment on 13 August 2026:
+
 ```
-attestation latency        8–11 s per confidential answer
-fee consumed on deploy     2 × 10¹² wei, exactly two randBounded calls
+confidential answer, steady state      10–12 s
+first answer on a freshly deployed     67–71 s   (the covalidator warming to a new contract)
+sealed guess ciphertext                1316 bytes, encrypted in the browser
+fee consumed on deploy                 2 × 10¹² wei, exactly two randBounded calls
 ```
 
 A dig is not instant. The interface narrates the wait as searching rather than hiding it.
@@ -109,16 +150,27 @@ A dig is not instant. The interface narrates the wait as searching rather than h
 
 ```bash
 npm install                      # root: Foundry deps for contracts/
-cd contracts && forge test       # 98 tests
-cd ../web && npm test            # 74 tests
-cd ../web && npm run dev
+
+cd contracts
+forge build
+forge test                       # 39 tests
+forge fmt --check
+
+cd ../web
+npm install
+npm test                         # 180 tests
+npm run lint
+npm run build
+npm run dev
 ```
+
+Every command above passes from a clean clone, with no extra flags.
 
 `web/.env.local` needs:
 
 ```
 NEXT_PUBLIC_REOWN_PROJECT_ID=...
-NEXT_PUBLIC_DAILY_ADDRESS=0x1866B5248E212B83C0bCd1B45b0512475e924649
+NEXT_PUBLIC_DAILY_ADDRESS=0x86C59B978B14bc8B2914A70548baAB2700bd58d6
 NEXT_PUBLIC_CALLSIGNS_ADDRESS=0x14EFc65668aFEAB2De1DfF8D8a88b8EE5F357f19
 DEPLOYER_PRIVATE_KEY=...          # keeper and faucet only, never an owner key
 CRON_SECRET=...                   # guards the reveal and keeper endpoints
@@ -132,31 +184,43 @@ DEPLOYER_PRIVATE_KEY=0x... forge script script/DeployDaily.s.sol:DeployDaily \
   --rpc-url https://sepolia.base.org --broadcast
 ```
 
+Play a hunt from the command line, which is how the evidence above was gathered:
+
+```bash
+cd web
+node scripts/play-hunt.cjs --key 0x... --digs 3,4 7,7 0,10 --guess 5,5
+```
+
 ## Known limitations
 
-- **Six digs is about a minute of waiting.** Each confidential answer takes 8–11 seconds. The
+- **Six digs is about a minute of waiting.** Each confidential answer takes 10–12 seconds. The
   interface makes the wait part of the tension rather than pretending it is not there.
 - **Nothing stops one person playing from several wallets.** Digs are keyed on `msg.sender`,
   so the leaderboard is for fun, not for stakes.
+- **Day 20678 was seeded by the author.** Six wallets played it deliberately, to give the first
+  reveal on this deployment a populated board. They are scripted hunts, not organic players.
 - **The map opens on a schedule this project runs.** `revealDay` is permissionless, so anyone
   can open yesterday's map if the scheduler misses, but until somebody calls it the recap has
-  nothing to show.
-- **The daily rollover has been tested in Foundry against a warped clock, not yet watched
-  happening on a live day boundary.**
+  nothing to show. The keeper is a GitHub Action at 00:05 UTC; a sweep that fails part way
+  retries the trails it missed on the next run.
+- **A revealed day sometimes will not decrypt immediately.** The recap falls back to the most
+  recent day the network will serve rather than showing an error.
 
-## An earlier version of this project
+## Disclosure
 
-The history contains a larger game: 64×64 vaults, warmer/colder relative to your own best
-probe, purchasable compass bearings, an intel-licensing market. It works and its tests pass.
-The person who helped build it then looked at the finished screen and said *"I don't really
-understand this game."*
+Built during the Summer Game Jam window. The first commit is 11 August 2026.
+
+The history contains an earlier, larger game: 64×64 vaults, warmer/colder relative to your own
+best probe, purchasable compass bearings, an intel-licensing market. It works and its tests
+pass. The person who helped build it then looked at the finished screen and said *"I don't
+really understand this game."*
 
 Relative feedback was the problem. `COLDER` means *further than your own closest probe so far*,
 which nobody can hold in their head across twenty moves. `HOT` means something on its own.
 
 That game has been cut from `main` so this repository describes one product. It is preserved
-in full — contract, 57 passing tests, and its whole frontend — at the `pre-daily-pivot` tag
-and the `legacy-vault-game` branch:
+in full — contract, its tests, and its whole frontend — at the `pre-daily-pivot` tag and the
+`legacy-vault-game` branch:
 
 ```bash
 git show pre-daily-pivot:contracts/src/AzimuthGame.sol
