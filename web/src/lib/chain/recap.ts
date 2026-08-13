@@ -181,16 +181,11 @@ export async function loadRecap(day: number): Promise<Recap> {
   return recap;
 }
 
-// How many days back to look for something readable. A hunt runs daily, so
-// three covers a weekend of covalidator trouble without trawling history.
 const FALLBACK_DAYS = 3;
 
-// Yesterday is what a player came for, but an unreadable yesterday should not
-// leave the page blank. Walk back until a day decrypts, and let the caller say
-// that it did — an unlabelled older day would be worse than an empty one.
 export async function loadRecapOrLatest(day: number): Promise<Recap> {
   const asked = await loadRecap(day);
-  if (asked.readable) return asked;
+  if (asked.readable || asked.revealed) return asked;
 
   for (let back = 1; back <= FALLBACK_DAYS; back += 1) {
     const older = await loadRecap(day - back).catch(() => null);

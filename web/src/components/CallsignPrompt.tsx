@@ -94,7 +94,7 @@ export function CallsignPrompt() {
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-semibold">
-            Claim a callsign so the leaderboard shows a name, not a hex string.
+            Claim a callsign so the daily standings show a name, not a hex string.
           </p>
           <p className="num mt-1 text-xs text-ink-soft">
             {shortenAddress(address)} · one signature, stored onchain
