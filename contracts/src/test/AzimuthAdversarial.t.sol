@@ -51,10 +51,6 @@ contract AzimuthAdversarialTest is IncoTest {
 
         vm.prank(hunterB);
         callsigns.setCallsign(bytes32(bytes("abcdefghijklmnop")));
-        assertEq(
-            callsigns.callsignOf(hunterB),
-            bytes32(bytes("abcdefghijklmnop")),
-            "sixteen characters rejected"
-        );
+        assertEq(callsigns.callsignOf(hunterB), bytes32(bytes("abcdefghijklmnop")), "sixteen characters rejected");
     }
 }
