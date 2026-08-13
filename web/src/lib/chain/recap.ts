@@ -183,12 +183,21 @@ export async function loadRecap(day: number): Promise<Recap> {
 
 const FALLBACK_DAYS = 3;
 
-export async function loadRecapOrLatest(day: number): Promise<Recap> {
-  const asked = await loadRecap(day);
-  if (asked.readable || asked.revealed) return asked;
+// Readable is the only bar that matters here. A day can be open on chain and
+// still refuse to decrypt — that state used to be returned as the recap, which
+// showed the player an apology while a genuinely revealed hunt sat one day
+// back. Falling back on `revealed` alone never reached it.
+//
+// The loader is a parameter so the choice can be tested without a chain.
+export async function loadRecapOrLatest(
+  day: number,
+  load: (day: number) => Promise<Recap> = loadRecap,
+): Promise<Recap> {
+  const asked = await load(day);
+  if (asked.readable) return asked;
 
   for (let back = 1; back <= FALLBACK_DAYS; back += 1) {
-    const older = await loadRecap(day - back).catch(() => null);
+    const older = await load(day - back).catch(() => null);
     if (older?.readable) return { ...older, requestedDay: day };
   }
   return asked;
