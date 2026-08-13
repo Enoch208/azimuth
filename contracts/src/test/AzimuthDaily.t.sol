@@ -269,6 +269,141 @@ contract AzimuthDailyTest is IncoTest {
         assertTrue(e.isAllowed(ben, euint256.wrap(handle)), "the recap cannot read the trail");
     }
 
+    // ---- The sealed guess ----------------------------------------------
+    //
+    // Six digs are public the moment they land. The guess that follows them is
+    // the one move on the board that nobody can watch: the hunter encrypts it,
+    // the contract compares it against a coordinate it cannot read either, and
+    // the answer is decryptable by that hunter alone until the map opens.
+
+    function _spendSixDigsMissing(address who, uint256 day) internal {
+        (uint256 x, uint256 y) = _treasure(day);
+        uint8 spent = 0;
+        for (uint8 i = 0; i < 11 && spent < game.DIGS(); i++) {
+            if (i == uint8(x)) continue;
+            _dig(who, i, uint8((y + 5) % 11));
+            spent++;
+        }
+    }
+
+    // A guess travels as one number: x + FIELD * y.
+    function _seal(address who, uint256 gx, uint256 gy) internal returns (bytes32 verdict) {
+        bytes memory tile = fakePrepareEuint256Ciphertext(gx + game.FIELD() * gy, who, address(game));
+        vm.prank(who);
+        verdict = game.sealGuess(tile);
+        processAllOperations();
+    }
+
+    function testASealedGuessNeedsAllSixDigsSpent() public {
+        uint256 day = game.openHunt();
+        processAllOperations();
+        _dig(ada, 0, 0);
+
+        bytes memory tile = fakePrepareEuint256Ciphertext(3 + game.FIELD() * 3, ada, address(game));
+        vm.prank(ada);
+        vm.expectRevert(AzimuthDaily.DigsNotSpent.selector);
+        game.sealGuess(tile);
+        day;
+    }
+
+    function testOnlyOneSealedGuessADay() public {
+        uint256 day = game.openHunt();
+        processAllOperations();
+        _spendSixDigsMissing(ada, day);
+        _seal(ada, 1, 1);
+
+        bytes memory tile = fakePrepareEuint256Ciphertext(2 + game.FIELD() * 2, ada, address(game));
+        vm.prank(ada);
+        vm.expectRevert(AzimuthDaily.AlreadyGuessed.selector);
+        game.sealGuess(tile);
+    }
+
+    function testARightSealedGuessWinsTheDayAfterMidnight() public {
+        uint256 day = game.openHunt();
+        processAllOperations();
+        (uint256 x, uint256 y) = _treasure(day);
+
+        _spendSixDigsMissing(ada, day);
+        _seal(ada, x, y);
+
+        (,,,, bytes32 foundHandle) = game.playerState(day, ada);
+        (, bytes[] memory signatures) =
+            getDecryptionAttestation(ada, HandleWithProof({handle: foundHandle, proof: _emptyAllowanceProof()}));
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(ada);
+        game.claimTreasure(day, signatures);
+
+        (,, bool finished,,) = game.playerState(day, ada);
+        assertTrue(finished, "a right sealed guess did not settle as a find");
+    }
+
+    function testAWrongSealedGuessSettlesNothing() public {
+        uint256 day = game.openHunt();
+        processAllOperations();
+        (uint256 x, uint256 y) = _treasure(day);
+
+        _spendSixDigsMissing(ada, day);
+        _seal(ada, (x + 3) % 11, (y + 4) % 11);
+
+        (,,,, bytes32 foundHandle) = game.playerState(day, ada);
+        (, bytes[] memory signatures) =
+            getDecryptionAttestation(ada, HandleWithProof({handle: foundHandle, proof: _emptyAllowanceProof()}));
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(ada);
+        vm.expectRevert(AzimuthDaily.NotYourTreasure.selector);
+        game.claimTreasure(day, signatures);
+    }
+
+    // The guess is the only move that is not public while the day runs. If a
+    // rival could read either the coordinate or the verdict, a hunter watching
+    // the board would learn the treasure from somebody else's last answer.
+    function testASealedGuessIsUnreadableByEveryoneElse() public {
+        uint256 day = game.openHunt();
+        processAllOperations();
+        _spendSixDigsMissing(ada, day);
+        bytes32 verdict = _seal(ada, 7, 7);
+
+        (, bytes32 tile,) = game.guessOf(day, ada);
+        assertTrue(e.isAllowed(ada, euint256.wrap(verdict)), "the hunter cannot read their own verdict");
+        assertFalse(e.isAllowed(ben, euint256.wrap(verdict)), "a rival could read the verdict");
+        assertFalse(e.isAllowed(ben, euint256.wrap(tile)), "a rival could read the guessed tile");
+    }
+
+    function testNothingPublicSaysWhetherAGuessLanded() public {
+        uint256 day = game.openHunt();
+        processAllOperations();
+        (uint256 x, uint256 y) = _treasure(day);
+        _spendSixDigsMissing(ada, day);
+        _seal(ada, x, y);
+
+        (bool made,,) = game.guessOf(day, ada);
+        assertTrue(made, "the guess was not recorded at all");
+
+        (,, bool finished, uint8 foundOn,) = game.playerState(day, ada);
+        assertFalse(finished, "a right guess marked a finder mid-hunt");
+        assertEq(foundOn, 0, "a right guess published a score mid-hunt");
+
+        (,, uint32 finders,,) = game.huntInfo(day);
+        assertEq(finders, 0, "a right guess moved the public finder count");
+    }
+
+    function testAGuessOpensWithTheMap() public {
+        uint256 day = game.openHunt();
+        processAllOperations();
+        _spendSixDigsMissing(ada, day);
+        bytes32 verdict = _seal(ada, 2, 9);
+
+        vm.warp(block.timestamp + 1 days);
+        game.revealDay(day);
+        processAllOperations();
+        game.revealTrail(day, ada);
+        processAllOperations();
+
+        (, bytes32 tile,) = game.guessOf(day, ada);
+        assertTrue(e.isAllowed(ben, euint256.wrap(verdict)), "the recap cannot read the verdict");
+        assertTrue(e.isAllowed(ben, euint256.wrap(tile)), "the recap cannot read the guessed tile");
+    }
+
     function testTheTrailRecordsWhereAndWhen() public {
         uint256 day = game.openHunt();
         processAllOperations();

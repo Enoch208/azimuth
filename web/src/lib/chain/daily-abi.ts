@@ -1,5 +1,22 @@
 export const DAILY_ABI = [
   {
+    "type": "receive",
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "DAY",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "type": "function",
     "name": "DIGS",
     "inputs": [],
@@ -15,6 +32,84 @@ export const DAILY_ABI = [
   {
     "type": "function",
     "name": "FIELD",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "TEMPERATURE_BURNING",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "TEMPERATURE_COLD",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "TEMPERATURE_FOUND",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "TEMPERATURE_FREEZING",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "TEMPERATURE_HOT",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "TEMPERATURE_WARM",
     "inputs": [],
     "outputs": [
       {
@@ -66,6 +161,40 @@ export const DAILY_ABI = [
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "guessOf",
+    "inputs": [
+      {
+        "name": "day",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "hunter",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "made",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "tileHandle",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "verdictHandle",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -230,6 +359,25 @@ export const DAILY_ABI = [
   },
   {
     "type": "function",
+    "name": "sealGuess",
+    "inputs": [
+      {
+        "name": "tileCiphertext",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "verdictHandle",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "today",
     "inputs": [],
     "outputs": [
@@ -301,6 +449,31 @@ export const DAILY_ABI = [
       },
       {
         "name": "temperature",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "GuessSealed",
+    "inputs": [
+      {
+        "name": "day",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "hunter",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "verdict",
         "type": "bytes32",
         "indexed": false,
         "internalType": "bytes32"
@@ -389,6 +562,11 @@ export const DAILY_ABI = [
   },
   {
     "type": "error",
+    "name": "AlreadyGuessed",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "AlreadyRevealed",
     "inputs": []
   },
@@ -405,6 +583,11 @@ export const DAILY_ABI = [
   {
     "type": "error",
     "name": "DayStillRunning",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DigsNotSpent",
     "inputs": []
   },
   {

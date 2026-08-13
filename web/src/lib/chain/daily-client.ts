@@ -2,7 +2,7 @@ import { parseEventLogs, toHex, type Account, type Chain, type Hex, type Transpo
 import { DAILY_ABI } from "@/lib/chain/daily-abi";
 import { DAILY_ADDRESS, publicClient } from "@/lib/chain/config";
 import { getLightning } from "@/lib/chain/inco";
-import { DIGS, type Dig, type Temperature, type Tile } from "@/lib/daily";
+import { DIGS, tileFromIndex, tileIndex, type Dig, type Temperature, type Tile } from "@/lib/daily";
 
 export type DigPhase = "idle" | "signing" | "confirming" | "reading";
 
@@ -26,6 +26,11 @@ export interface DailySnapshot {
   foundOn: number;
   hunters: number;
   finders: number;
+  // The hunter's own sealed guess. `sealed` is what the chain records; `right`
+  // is what only this wallet can read back.
+  sealed: boolean;
+  guessedTile: Tile | null;
+  guessRight: boolean | null;
 }
 
 export class DailyClient {
@@ -34,6 +39,9 @@ export class DailyClient {
   private foundOn = 0;
   private hunters = 0;
   private finders = 0;
+  private sealed = false;
+  private guessedTile: Tile | null = null;
+  private guessRight: boolean | null = null;
 
   constructor(
     private readonly day: number,
@@ -51,11 +59,14 @@ export class DailyClient {
       foundOn: this.foundOn,
       hunters: this.hunters,
       finders: this.finders,
+      sealed: this.sealed,
+      guessedTile: this.guessedTile,
+      guessRight: this.guessRight,
     };
   }
 
   async load(): Promise<DailySnapshot> {
-    const [state, trail, info] = await Promise.all([
+    const [state, trail, info, guess] = await Promise.all([
       publicClient.readContract({
         address: DAILY_ADDRESS,
         abi: DAILY_ABI,
@@ -74,12 +85,19 @@ export class DailyClient {
         functionName: "huntInfo",
         args: [BigInt(this.day)],
       }),
+      publicClient.readContract({
+        address: DAILY_ADDRESS,
+        abi: DAILY_ABI,
+        functionName: "guessOf",
+        args: [BigInt(this.day), this.hunter],
+      }),
     ]);
 
     this.finished = state[2];
     this.foundOn = state[3];
     this.hunters = Number(info[1]);
     this.finders = Number(info[2]);
+    this.sealed = guess[0];
 
     // Where a hunter dug is plaintext and always readable. Only the answers need
     // the covalidator, so the board is rebuilt first and the temperatures are
@@ -98,6 +116,21 @@ export class DailyClient {
         }));
       } catch {
         // leave them unread; the board still shows the digs that were spent
+      }
+    }
+
+    // A sealed guess is two ciphertexts to its owner and nothing to anybody
+    // else: the tile they named and whether it landed. Both are read back here
+    // so a returning hunter sees their own last word rather than a blank.
+    if (this.sealed) {
+      try {
+        const lightning = await getLightning();
+        const [tile, right] = await lightning.attestedDecrypt(this.wallet, [guess[1] as Hex, guess[2] as Hex]);
+        this.guessedTile = tileFromIndex(Number(tile.plaintext.value));
+        this.guessRight = Boolean(right.plaintext.value);
+      } catch {
+        // sealed and unread is a real state; the panel says so rather than
+        // pretending no guess was made.
       }
     }
 
@@ -148,6 +181,57 @@ export class DailyClient {
     throw new Error(
       `DIG_LANDED_UNREAD: your dig was recorded on Base, but its result has not arrived yet. ${String(last).slice(0, 80)}`,
     );
+  }
+
+  // The one move a hunter encrypts themselves. Every dig above it was public
+  // the moment it landed; this tile goes to the chain as ciphertext, is compared
+  // against a coordinate the contract cannot read either, and comes back as a
+  // yes or no that only this wallet can open.
+  async sealGuess(tile: Tile): Promise<DailySnapshot> {
+    this.onPhase("signing");
+    const lightning = await getLightning();
+    const { handleTypes } = await import("@inco/lightning-js");
+    const ciphertext = await lightning.encrypt(BigInt(tileIndex(tile)), {
+      accountAddress: this.hunter,
+      dappAddress: DAILY_ADDRESS,
+      handleType: handleTypes.euint256,
+    });
+
+    const hash = await this.wallet.writeContract({
+      address: DAILY_ADDRESS,
+      abi: DAILY_ABI,
+      functionName: "sealGuess",
+      args: [ciphertext],
+      chain: this.wallet.chain,
+      account: this.wallet.account,
+    });
+
+    this.onPhase("confirming");
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    const events = parseEventLogs({ abi: DAILY_ABI, eventName: "GuessSealed", logs: receipt.logs });
+    const verdict = (events[0].args as unknown as { verdict: Hex }).verdict;
+
+    this.onPhase("reading");
+    this.sealed = true;
+    this.guessedTile = tile;
+    this.guessRight = await this.readVerdict(verdict);
+
+    this.onPhase("idle");
+    return this.snapshot();
+  }
+
+  private async readVerdict(handle: Hex): Promise<boolean | null> {
+    const lightning = await getLightning();
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try {
+        const [attestation] = await lightning.attestedDecrypt(this.wallet, [handle]);
+        return Boolean(attestation.plaintext.value);
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+      }
+    }
+    // The guess is on chain and counted either way. Unread is not undone.
+    return null;
   }
 
   // Scores register after midnight, because a public finder during the day

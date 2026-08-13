@@ -10,7 +10,7 @@ import {
   sealedLeaks,
 } from "@/lib/result-card";
 
-const DAY = 20_677;
+const DAY = 20_679;
 const WALLET = "0x095a4C1d4F7e3666b1842d7DAaf9C01fea4CA211";
 const OTHER = "0x149CAc7e03b1842d7DAaf9C01fea4C1d4F7e3666";
 

@@ -7,6 +7,7 @@ import { useAccount, useWalletClient } from "wagmi";
 import { DailyMap } from "@/components/daily/DailyMap";
 import { DigResult } from "@/components/daily/DigResult";
 import { HuntStatus } from "@/components/daily/HuntStatus";
+import { SealedGuess } from "@/components/daily/SealedGuess";
 import { SoundToggle } from "@/components/daily/SoundToggle";
 import { RevealCountdown } from "@/components/daily/RevealCountdown";
 import { VictoryOverlay } from "@/components/daily/VictoryOverlay";
@@ -26,6 +27,7 @@ import {
   DIGS,
   TEMPERATURES,
   alreadyDug,
+  canSeal,
   huntNumber,
   isOver,
   type Dig,
@@ -76,7 +78,22 @@ export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProp
     digs: Dig[];
     loaded: boolean;
     failure: string | null;
-  }>({ for: null, digs: [], loaded: false, failure: null });
+    sealed: boolean;
+    guessedTile: Tile | null;
+    guessRight: boolean | null;
+  }>({
+    for: null,
+    digs: [],
+    loaded: false,
+    failure: null,
+    sealed: false,
+    guessedTile: null,
+    guessRight: null,
+  });
+
+  // The tile lined up for a sealed guess, before it is sealed.
+  const [aiming, setAiming] = useState<Tile | null>(null);
+  const [sealing, setSealing] = useState(false);
 
   const mine = board.for === client;
   // Memoised so the empty fallback keeps one identity; a fresh array each
@@ -84,6 +101,9 @@ export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProp
   const digs = useMemo(() => (mine ? board.digs : EMPTY_DIGS), [mine, board.digs]);
   const loaded = mine ? board.loaded : false;
   const failure = mine ? board.failure : null;
+  const sealed = mine ? board.sealed : false;
+  const guessedTile = mine ? board.guessedTile : null;
+  const guessRight = mine ? board.guessRight : null;
 
   useEffect(() => {
     if (!client) return;
@@ -91,12 +111,30 @@ export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProp
     client
       .load()
       .then((snapshot) => {
-        if (live) setBoard({ for: client, digs: snapshot.digs, loaded: true, failure: null });
+        if (live) {
+          setBoard({
+            for: client,
+            digs: snapshot.digs,
+            loaded: true,
+            failure: null,
+            sealed: snapshot.sealed,
+            guessedTile: snapshot.guessedTile,
+            guessRight: snapshot.guessRight,
+          });
+        }
       })
       .catch((error) => {
         if (!live) return;
         const message = error instanceof Error ? error.message : String(error);
-        setBoard({ for: client, digs: [], loaded: true, failure: message });
+        setBoard({
+          for: client,
+          digs: [],
+          loaded: true,
+          failure: message,
+          sealed: false,
+          guessedTile: null,
+          guessRight: null,
+        });
       });
     return () => {
       live = false;
@@ -118,10 +156,18 @@ export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProp
       if (!client || !loaded || pending || over || alreadyDug(digs, tile)) return;
       const first = digs.length === 0;
       setPending(tile);
-      setBoard({ for: client, digs, loaded: true, failure: null });
+      setBoard({ for: client, digs, loaded: true, failure: null, sealed, guessedTile, guessRight });
       try {
         const snapshot = await client.dig(tile);
-        setBoard({ for: client, digs: snapshot.digs, loaded: true, failure: null });
+        setBoard({
+          for: client,
+          digs: snapshot.digs,
+          loaded: true,
+          failure: null,
+          sealed: snapshot.sealed,
+          guessedTile: snapshot.guessedTile,
+          guessRight: snapshot.guessRight,
+        });
         const answer = snapshot.digs[snapshot.digs.length - 1]?.temperature ?? null;
         play(answer === 0 ? "found" : answer !== null && answer <= 1 ? "burning" : "reveal");
         if (first && address) {
@@ -129,14 +175,54 @@ export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProp
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        setBoard({ for: client, digs, loaded: true, failure: message });
+        setBoard({ for: client, digs, loaded: true, failure: message, sealed, guessedTile, guessRight });
       } finally {
         setPhase("idle");
         setPending(null);
       }
     },
-    [client, loaded, pending, over, digs, address, day, queryClient],
+    [client, loaded, pending, over, digs, address, day, queryClient, sealed, guessedTile, guessRight],
   );
+
+  const offering = canSeal(digs, sealed);
+
+  // While a last word is on offer the board reopens, but a click now names a
+  // tile instead of spending a dig there are none left to spend.
+  const handleTile = useCallback(
+    (tile: Tile) => {
+      if (offering) {
+        setAiming(tile);
+        return;
+      }
+      void handleDig(tile);
+    },
+    [offering, handleDig],
+  );
+
+  const handleSeal = useCallback(async () => {
+    if (!client || !aiming || sealing) return;
+    setSealing(true);
+    try {
+      const snapshot = await client.sealGuess(aiming);
+      setBoard({
+        for: client,
+        digs: snapshot.digs,
+        loaded: true,
+        failure: null,
+        sealed: snapshot.sealed,
+        guessedTile: snapshot.guessedTile,
+        guessRight: snapshot.guessRight,
+      });
+      play(snapshot.guessRight ? "found" : "reveal");
+      setAiming(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setBoard({ for: client, digs, loaded: true, failure: message, sealed, guessedTile, guessRight });
+    } finally {
+      setPhase("idle");
+      setSealing(false);
+    }
+  }, [client, aiming, sealing, digs, sealed, guessedTile, guessRight]);
 
   // One call decides the Keeper's mood for the whole screen.
   const keeper = keeperStateFor({
@@ -236,8 +322,10 @@ export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProp
                 digs={digs}
                 pending={pending}
                 treasure={null}
-                disabled={!ready || !loaded || over || pending !== null}
-                onDig={handleDig}
+                disabled={!ready || !loaded || pending !== null || (over && !offering) || sealing}
+                onDig={handleTile}
+                selected={offering ? aiming : null}
+                intent={offering ? "seal" : "dig"}
               />
             </div>
 
@@ -269,6 +357,16 @@ export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProp
         </div>
 
         <div className="flex flex-col gap-5">
+          {offering || sealed ? (
+            <SealedGuess
+              state={sealed ? "sealed" : sealing ? "sealing" : "choosing"}
+              selected={aiming}
+              right={guessRight}
+              guessed={guessedTile}
+              onSeal={handleSeal}
+            />
+          ) : null}
+
           <HuntStatus day={day} digs={digs} pending={pending !== null} hunters={hunters} />
 
           <section className="rounded-card border-2 border-ink bg-gold p-5 shadow-hard-sm">

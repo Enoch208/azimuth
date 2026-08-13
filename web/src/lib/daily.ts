@@ -61,10 +61,35 @@ export function alreadyDug(digs: Dig[], tile: Tile): boolean {
   return digs.some((dig) => dig.tile.x === tile.x && dig.tile.y === tile.y);
 }
 
-// Day zero is the first day this game could have run. Kept here so the label a
-// player shares matches the day index the contract used.
+// A sealed guess travels to the contract as one number, x + FIELD * y, so the
+// whole thing is a single ciphertext and a single comparison.
+export function tileIndex(tile: Tile): number {
+  return tile.x + FIELD * tile.y;
+}
+
+export function tileFromIndex(index: number): Tile {
+  return { x: index % FIELD, y: Math.floor(index / FIELD) };
+}
+
+// A hunter's last word, once the map has opened enough to read it.
+export interface Guess {
+  // Null while the guess is still sealed to everyone but its owner.
+  tile: Tile | null;
+  right: boolean | null;
+}
+
+// The last word is offered only to a hunter who spent all six digs and never
+// turned the treasure up. Finding it by digging ends the hunt on its own, and
+// the contract allows only one guess a day.
+export function canSeal(digs: Dig[], guessed: boolean): boolean {
+  return !guessed && digs.length >= DIGS && !isFound(digs);
+}
+
+// The first day the contract now deployed could run. Hunt numbering is relative
+// to the contract being played, so a shared "#1" means the first hunt this
+// deployment ever held rather than a day it has no record of.
 export const DAY_SECONDS = 86_400;
-export const FIRST_DAY = 20_676;
+export const FIRST_DAY = 20_678;
 
 export function dayIndex(nowSeconds: number): number {
   return Math.floor(nowSeconds / DAY_SECONDS);

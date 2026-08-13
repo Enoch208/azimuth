@@ -36,11 +36,21 @@ contract AzimuthDaily {
         ebool found;
     }
 
+    // A hunter's last word once their six digs are spent: a tile they encrypted
+    // themselves, and the contract's verdict on it. The tile travels as one
+    // number, x + FIELD * y, so the whole guess is a single ciphertext.
+    struct Guess {
+        bool made;
+        bytes32 tile;
+        ebool right;
+    }
+
     mapping(uint256 => Hunt) private hunts;
     mapping(uint256 => mapping(address => Player)) private players;
     mapping(uint256 => mapping(address => bytes32[])) private trail;
     mapping(uint256 => mapping(address => uint8[])) private trailX;
     mapping(uint256 => mapping(address => uint8[])) private trailY;
+    mapping(uint256 => mapping(address => Guess)) private guesses;
 
     error HuntNotOpen();
     error OffMap();
@@ -51,11 +61,14 @@ contract AzimuthDaily {
     error DayStillRunning();
     error ClaimAfterMidnight();
     error AlreadyRevealed();
+    error DigsNotSpent();
+    error AlreadyGuessed();
 
     event HuntOpened(uint256 indexed day, uint64 openedAt);
     event Dug(uint256 indexed day, address indexed hunter, uint8 x, uint8 y, uint8 digNumber, bytes32 temperature);
     event TreasureFound(uint256 indexed day, address indexed hunter, uint8 digs);
     event HuntRevealed(uint256 indexed day, bytes32 xHandle, bytes32 yHandle);
+    event GuessSealed(uint256 indexed day, address indexed hunter, bytes32 verdict);
 
     function today() public view returns (uint256) {
         return block.timestamp / DAY;
@@ -115,6 +128,48 @@ contract AzimuthDaily {
         emit Dug(day, msg.sender, x, y, player.digs, temperatureHandle);
     }
 
+    // Every dig is public the moment it lands, which is exactly what makes the
+    // last move worth hiding. Once the six are spent a hunter may seal one
+    // guess: they encrypt a coordinate, the contract compares it against one it
+    // cannot read either, and the verdict is decryptable by that hunter alone
+    // until the map opens. It is the only move on this board nobody can watch —
+    // and the only ciphertext here the contract did not mint itself.
+    //
+    // The result folds into the same flag a dug find sets, so claimTreasure and
+    // the whole midnight settlement need to know nothing about guessing.
+    function sealGuess(bytes calldata tileCiphertext) external returns (bytes32 verdictHandle) {
+        uint256 day = today();
+        Hunt storage hunt = hunts[day];
+        if (!hunt.opened) revert HuntNotOpen();
+
+        Player storage player = players[day][msg.sender];
+        if (player.digs < DIGS) revert DigsNotSpent();
+
+        Guess storage guess = guesses[day][msg.sender];
+        if (guess.made) revert AlreadyGuessed();
+
+        euint256 tile = e.newEuint256(tileCiphertext, msg.sender);
+        e.allowThis(tile);
+
+        // Both sides are folded to one number before the comparison, so a guess
+        // costs a single equality against a coordinate the contract cannot read.
+        ebool right = e.eq(e.add(hunt.x, e.mul(hunt.y, FIELD)), tile);
+        e.allowThis(right);
+        e.allow(right, msg.sender);
+
+        ebool everFound = e.or(player.found, right);
+        e.allowThis(everFound);
+        e.allow(everFound, msg.sender);
+        player.found = everFound;
+
+        guess.made = true;
+        guess.tile = euint256.unwrap(tile);
+        guess.right = right;
+
+        verdictHandle = ebool.unwrap(right);
+        emit GuessSealed(day, msg.sender, verdictHandle);
+    }
+
     // Dig coordinates are plaintext, so anything that publicly marks a hunter as
     // finished would point straight at the treasure: it is simply their last dug
     // tile. Scores are therefore registered once the day is over, when the map is
@@ -158,6 +213,14 @@ contract AzimuthDaily {
         for (uint256 i = 0; i < handles.length; i++) {
             e.reveal(euint256.wrap(handles[i]));
         }
+
+        // A sealed guess opens with the trail it belongs to, so the recap can
+        // draw where somebody spent their last word and whether it landed.
+        Guess storage guess = guesses[day][hunter];
+        if (guess.made) {
+            e.reveal(euint256.wrap(guess.tile));
+            e.reveal(guess.right);
+        }
     }
 
     function _temperature(Hunt storage hunt, uint8 x, uint8 y) private returns (euint256) {
@@ -190,6 +253,15 @@ contract AzimuthDaily {
         returns (uint8[] memory xs, uint8[] memory ys, bytes32[] memory temperatures)
     {
         return (trailX[day][hunter], trailY[day][hunter], trail[day][hunter]);
+    }
+
+    function guessOf(uint256 day, address hunter)
+        external
+        view
+        returns (bool made, bytes32 tileHandle, bytes32 verdictHandle)
+    {
+        Guess storage guess = guesses[day][hunter];
+        return (guess.made, guess.tile, ebool.unwrap(guess.right));
     }
 
     function treasureHandles(uint256 day) external view returns (bytes32 xHandle, bytes32 yHandle) {

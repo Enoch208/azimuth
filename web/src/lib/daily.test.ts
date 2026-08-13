@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  canSeal,
+  tileFromIndex,
+  tileIndex,
   DIGS,
   FIELD,
   alreadyDug,
@@ -131,5 +134,46 @@ describe("day numbering", () => {
     const noon = 20_800 * 86_400 + 43_200;
     expect(dayIndex(noon)).toBe(20_800);
     expect(dayIndex(noon + 86_400)).toBe(20_801);
+  });
+});
+
+describe("a sealed guess travels as one number", () => {
+  it("folds a tile into x + FIELD * y and back", () => {
+    for (let y = 0; y < FIELD; y += 1) {
+      for (let x = 0; x < FIELD; x += 1) {
+        expect(tileFromIndex(tileIndex({ x, y }))).toEqual({ x, y });
+      }
+    }
+  });
+
+  it("gives every tile on the map a distinct number", () => {
+    const seen = new Set<number>();
+    for (let y = 0; y < FIELD; y += 1) {
+      for (let x = 0; x < FIELD; x += 1) seen.add(tileIndex({ x, y }));
+    }
+    expect(seen.size).toBe(FIELD * FIELD);
+    expect(Math.max(...seen)).toBe(FIELD * FIELD - 1);
+  });
+});
+
+describe("who is offered a last word", () => {
+  const miss = (x: number, y: number): Dig => ({ tile: { x, y }, temperature: 4 });
+  const spent = [miss(0, 0), miss(1, 1), miss(2, 2), miss(3, 3), miss(4, 4), miss(5, 5)];
+
+  it("offers it once all six digs are spent and none of them landed", () => {
+    expect(canSeal(spent, false)).toBe(true);
+  });
+
+  it("does not offer it while digs remain", () => {
+    expect(canSeal(spent.slice(0, 5), false)).toBe(false);
+  });
+
+  it("does not offer it to a hunter who already dug the treasure up", () => {
+    const found = [...spent.slice(0, 5), { tile: { x: 9, y: 9 }, temperature: 0 as const }];
+    expect(canSeal(found, false)).toBe(false);
+  });
+
+  it("does not offer a second one", () => {
+    expect(canSeal(spent, true)).toBe(false);
   });
 });

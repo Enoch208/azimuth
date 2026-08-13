@@ -14,6 +14,12 @@ interface DailyMapProps {
   treasure: Tile | null;
   disabled: boolean;
   onDig: (tile: Tile) => void;
+  // The tile a hunter is lining up for their sealed guess. Marked rather than
+  // filled, because nothing about it is decided until they seal it.
+  selected?: Tile | null;
+  // What a click means right now. Sealing re-opens the board after the six
+  // digs are gone, so the last word is chosen on the same map as the rest.
+  intent?: "dig" | "seal";
 }
 
 const TILES: Tile[] = [];
@@ -21,7 +27,15 @@ for (let y = 0; y < FIELD; y += 1) {
   for (let x = 0; x < FIELD; x += 1) TILES.push({ x, y });
 }
 
-export function DailyMap({ digs, pending, treasure, disabled, onDig }: DailyMapProps) {
+export function DailyMap({
+  digs,
+  pending,
+  treasure,
+  disabled,
+  onDig,
+  selected = null,
+  intent = "dig",
+}: DailyMapProps) {
   const dugAt = new Map(digs.map((dig) => [`${dig.tile.x},${dig.tile.y}`, dig]));
 
   return (
@@ -38,6 +52,7 @@ export function DailyMap({ digs, pending, treasure, disabled, onDig }: DailyMapP
         const isTreasure = treasure?.x === tile.x && treasure?.y === tile.y;
         const spent = alreadyDug(digs, tile);
         const locked = disabled || spent || isPending;
+        const isSelected = selected?.x === tile.x && selected?.y === tile.y;
 
         const style = dug && dug.temperature !== null ? TEMPERATURES[dug.temperature] : null;
 
@@ -53,13 +68,16 @@ export function DailyMap({ digs, pending, treasure, disabled, onDig }: DailyMapP
             aria-label={
               dug
                 ? `Tile ${tile.x + 1}, ${tile.y + 1}: ${style?.label ?? "still arriving"}`
-                : `Dig tile ${tile.x + 1}, ${tile.y + 1}`
+                : intent === "seal"
+                  ? `Name tile ${tile.x + 1}, ${tile.y + 1} as your sealed guess`
+                  : `Dig tile ${tile.x + 1}, ${tile.y + 1}`
             }
+            aria-pressed={intent === "seal" ? isSelected : undefined}
             className={`tile relative aspect-square rounded-[6px] border-2 border-ink leading-none sm:rounded-lg ${
               isPending ? "animate-dig-pulse" : ""
             } ${
               !dug && !isPending ? "bg-paper-raised shadow-hard-xs" : ""
-            }`}
+            } ${isSelected ? "ring-4 ring-teal ring-offset-1 ring-offset-paper" : ""}`}
             style={
               dug
                 ? { background: style?.fill ?? "var(--color-paper-sunk)", boxShadow: "none" }

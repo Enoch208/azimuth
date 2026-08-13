@@ -18,6 +18,13 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // Node-only tooling. `@inco/lightning-js` ships an ESM build with
+    // extensionless internal imports, which bare node cannot resolve — the
+    // bundler can. Scripts that drive a real wallet therefore have to be CJS.
+    files: ["scripts/**/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
