@@ -17,8 +17,8 @@ describe("failure copy never shows a player raw chain plumbing", () => {
       "User rejected the request.",
       "insufficient funds for gas * price + value",
       "nonce too low: next nonce 30, tx nonce 29",
-      "Not enough AZ credits left for this action",
-      "execution reverted: VaultExpired",
+      "execution reverted: NoDigsLeft",
+      "execution reverted: AlreadyDug",
       "The request timed out.",
     ];
     for (const raw of cases) {
@@ -35,9 +35,9 @@ describe("failure copy never shows a player raw chain plumbing", () => {
     expect(copy.note).toMatch(/nothing was spent/i);
   });
 
-  it("distinguishes running out of gas money from running out of AZ", () => {
+  it("distinguishes running out of gas money from running out of digs", () => {
     expect(describeFailure("insufficient funds for gas").title).toMatch(/Base Sepolia ETH/);
-    expect(describeFailure("Not enough AZ credits left").title).toBe("Out of AZ");
+    expect(describeFailure("execution reverted: NoDigsLeft").title).toBe("Your six digs are spent");
   });
 
   it("explains a busy wallet rather than repeating the nonce numbers", () => {
@@ -55,12 +55,44 @@ describe("failure copy never shows a player raw chain plumbing", () => {
     const copy = describeFailure("Something odd happened.");
     expect(copy.title).toBe("That move did not go through");
     expect(copy.note).toContain("Something odd happened.");
-    expect(copy.note).toMatch(/try the cell again/i);
+    expect(copy.note).toMatch(/try the tile again/i);
   });
 
   it("drops an unrecognised message that is too long to read", () => {
     const copy = describeFailure("z".repeat(400));
-    expect(copy.note).toBe("Nothing was spent. Try the cell again.");
+    expect(copy.note).toBe("Nothing was spent. Try the tile again.");
+  });
+});
+
+// The contract's own reverts are the failures a player is most likely to meet.
+// Each one names what the hunt did, never the selector that carried it.
+describe("every AzimuthDaily revert reads as the game, not as solidity", () => {
+  const REVERTS: [string, string][] = [
+    ["NoDigsLeft", "Your six digs are spent"],
+    ["AlreadyFinished", "Your six digs are spent"],
+    ["AlreadyDug", "You have already dug there"],
+    ["OffMap", "That tile is off the map"],
+    ["ClaimAfterMidnight", "The day is still running"],
+    ["DayStillRunning", "The day is still running"],
+    ["NotYourTreasure", "That claim did not verify"],
+    ["HuntNotOpen", "That hunt is not open"],
+  ];
+
+  for (const [error, title] of REVERTS) {
+    it(`explains ${error} without echoing it`, () => {
+      const copy = describeFailure(`execution reverted: ${error}`);
+      expect(copy.title).toBe(title);
+      expect(copy.note).not.toContain(error);
+      expect(copy.note).not.toMatch(/revert/i);
+    });
+  }
+
+  it("keeps no copy from the retired vault game", () => {
+    const everything = REVERTS.map(([error]) => describeFailure(`execution reverted: ${error}`))
+      .concat(describeFailure("execution reverted"), describeFailure("Something odd happened."));
+    for (const copy of everything) {
+      expect(`${copy.title} ${copy.note}`).not.toMatch(/vault|probe|\bAZ\b|bounty|credits/i);
+    }
   });
 });
 

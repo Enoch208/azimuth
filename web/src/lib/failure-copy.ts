@@ -15,7 +15,7 @@ const PATTERNS: { match: RegExp; copy: FailureCopy }[] = [
     match: /user rejected|user denied|rejected the request/i,
     copy: {
       title: "You cancelled it",
-      note: "Nothing was sent and nothing was spent. Pick a cell whenever you are ready.",
+      note: "Nothing was sent and nothing was spent. Pick a tile whenever you are ready.",
     },
   },
   {
@@ -25,32 +25,55 @@ const PATTERNS: { match: RegExp; copy: FailureCopy }[] = [
       note: "Your wallet cannot cover the gas for this move. Top up from a Base Sepolia faucet and try again.",
     },
   },
+  // The contract's own reverts, each named as the hunt rather than as the
+  // selector that carried it. These sit above the generic revert on purpose.
   {
-    match: /Not enough AZ credits/i,
+    match: /NoDigsLeft|AlreadyFinished/,
     copy: {
-      title: "Out of AZ",
-      note: "You have spent your credits on this board. Find a vault to earn its bounty.",
+      title: "Your six digs are spent",
+      note: "Today's hunt is sealed for you. The map opens after midnight UTC, and a fresh treasure is buried for tomorrow.",
     },
   },
   {
-    match: /ProbeLimitReached|probe limit/i,
+    match: /AlreadyDug/,
     copy: {
-      title: "No probes left here",
-      note: "You have used your whole allowance on this vault. Another vault is open.",
+      title: "You have already dug there",
+      note: "That tile has told you everything it knows. Pick one you have not opened.",
     },
   },
   {
-    match: /VaultExpired|vault expired/i,
+    match: /OffMap/,
     copy: {
-      title: "This vault closed",
-      note: "It expired while you were deciding. The keeper will respawn it with fresh coordinates.",
+      title: "That tile is off the map",
+      note: "The hunt runs on an eleven by eleven field. Pick a tile inside it.",
+    },
+  },
+  {
+    match: /ClaimAfterMidnight|DayStillRunning/,
+    copy: {
+      title: "The day is still running",
+      note: "Nothing about today can be settled until the map opens after midnight UTC. That wait is what keeps the treasure hidden.",
+    },
+  },
+  {
+    match: /NotYourTreasure/,
+    copy: {
+      title: "That claim did not verify",
+      note: "The signatures did not prove a find on that day. If you did find it, reload and try the claim once more.",
+    },
+  },
+  {
+    match: /HuntNotOpen/,
+    copy: {
+      title: "That hunt is not open",
+      note: "No treasure was buried that day, or its map has not opened yet.",
     },
   },
   {
     match: /execution reverted/i,
     copy: {
       title: "The contract turned that move down",
-      note: "Its rules rejected the move — the vault may have closed or your allowance may be spent. Nothing was spent; reload to see the current state.",
+      note: "Its rules turned the move down — your digs may be spent, or that tile may already be open. Nothing was spent; reload to see the current state.",
     },
   },
   {
@@ -71,7 +94,7 @@ const PATTERNS: { match: RegExp; copy: FailureCopy }[] = [
     match: /rpc|network|fetch failed|failed to fetch|connection/i,
     copy: {
       title: "Could not reach Base",
-      note: "The network dropped the request before it was sent. Nothing was spent — try the cell again.",
+      note: "The network dropped the request before it was sent. Nothing was spent — try the tile again.",
     },
   },
 ];
@@ -84,7 +107,7 @@ export function describeFailure(raw: string): FailureCopy {
   return {
     title: "That move did not go through",
     note: firstLine.length > 0 && firstLine.length <= 140
-      ? `${firstLine} Nothing was spent — try the cell again.`
-      : "Nothing was spent. Try the cell again.",
+      ? `${firstLine} Nothing was spent — try the tile again.`
+      : "Nothing was spent. Try the tile again.",
   };
 }
