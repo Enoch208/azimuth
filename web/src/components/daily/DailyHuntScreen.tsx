@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { baseSepolia } from "@reown/appkit/networks";
 import { useAccount, useWalletClient } from "wagmi";
 import { DailyMap } from "@/components/daily/DailyMap";
@@ -15,10 +16,11 @@ import { keeperStateFor } from "@/components/mascot/keeper-state";
 import { LockIcon } from "@/components/marks/Icons";
 import { TemperatureGlyph, UnreadGlyph } from "@/components/marks/TemperatureGlyph";
 import { DailyClient, type DigPhase } from "@/lib/chain/daily-client";
-import { loadDayStats, loadPlacings, type DayStats, type Placing } from "@/lib/chain/daily-stats";
+import { type Placing } from "@/lib/chain/daily-stats";
 import { shortenAddress } from "@/lib/chain/callsigns";
 import { describeFailure } from "@/lib/failure-copy";
 import { play, startListening } from "@/lib/sound";
+import { recordKey } from "@/lib/use-player-record";
 import { shouldCelebrate } from "@/lib/victory";
 import {
   DIGS,
@@ -39,24 +41,19 @@ const PHASE_COPY: Record<DigPhase, string> = {
   reading: "The Keeper is listening. Only you will hear the answer.",
 };
 
+// One stable empty board, so a disconnected wallet does not churn callbacks.
+const EMPTY_DIGS: Dig[] = [];
+
 interface DailyHuntScreenProps {
   day: number;
+  hunters: number;
+  yesterday: Placing[];
 }
 
-export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
+export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProps) {
   const { address, isConnected, chainId } = useAccount();
   const { data: walletClient } = useWalletClient();
-
-  const [phase, setPhase] = useState<DigPhase>("idle");
-  const [digs, setDigs] = useState<Dig[]>([]);
-  const [pending, setPending] = useState<Tile | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [stats, setStats] = useState<DayStats | null>(null);
-  const [yesterday, setYesterday] = useState<Placing[]>([]);
-  // The celebration is a moment, not a mode — once dismissed it stays dismissed
-  // and the Keeper settles into guarding the sealed result.
-  const [dismissed, setDismissed] = useState(false);
+  const queryClient = useQueryClient();
 
   const ready = isConnected && chainId === baseSepolia.id && !!walletClient && !!address;
 
@@ -65,16 +62,26 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
     [ready, day, walletClient, address],
   );
 
-  useEffect(() => {
-    let live = true;
-    loadDayStats(day)
-      .then((next) => live && setStats(next))
-      .catch(() => {});
-    loadPlacings(day - 1).then((next) => live && setYesterday(next)).catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [day, digs.length]);
+  const [phase, setPhase] = useState<DigPhase>("idle");
+  const [pending, setPending] = useState<Tile | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  // The board is stored against the client that produced it and compared during
+  // render, rather than cleared from an effect. Switching wallets then shows an
+  // empty board immediately instead of the previous wallet's digs.
+  const [board, setBoard] = useState<{
+    for: DailyClient | null;
+    digs: Dig[];
+    loaded: boolean;
+    failure: string | null;
+  }>({ for: null, digs: [], loaded: false, failure: null });
+
+  const mine = board.for === client;
+  // Memoised so the empty fallback keeps one identity; a fresh array each
+  // render would rebuild every callback that depends on it.
+  const digs = useMemo(() => (mine ? board.digs : EMPTY_DIGS), [mine, board.digs]);
+  const loaded = mine ? board.loaded : false;
+  const failure = mine ? board.failure : null;
 
   useEffect(() => {
     if (!client) return;
@@ -82,19 +89,17 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
     client
       .load()
       .then((snapshot) => {
-        if (!live) return;
-        setDigs(snapshot.digs);
-        setLoaded(true);
+        if (live) setBoard({ for: client, digs: snapshot.digs, loaded: true, failure: null });
       })
       .catch((error) => {
         if (!live) return;
-        setFailure(error instanceof Error ? error.message : String(error));
-        setLoaded(true);
+        const message = error instanceof Error ? error.message : String(error);
+        setBoard({ for: client, digs: [], loaded: true, failure: message });
       });
     return () => {
       live = false;
     };
-  }, [client, day]);
+  }, [client]);
 
   // The Keeper is audibly listening for as long as the answer is in flight.
   useEffect(() => {
@@ -108,23 +113,27 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
 
   const handleDig = useCallback(
     async (tile: Tile) => {
-      if (!client || pending || over || alreadyDug(digs, tile)) return;
+      if (!client || !loaded || pending || over || alreadyDug(digs, tile)) return;
+      const first = digs.length === 0;
       setPending(tile);
-      setFailure(null);
+      setBoard({ for: client, digs, loaded: true, failure: null });
       try {
         const snapshot = await client.dig(tile);
-        setDigs(snapshot.digs);
-        // The answer landing is the moment worth hearing.
+        setBoard({ for: client, digs: snapshot.digs, loaded: true, failure: null });
         const answer = snapshot.digs[snapshot.digs.length - 1]?.temperature ?? null;
         play(answer === 0 ? "found" : answer !== null && answer <= 1 ? "burning" : "reveal");
+        if (first && address) {
+          void queryClient.invalidateQueries({ queryKey: recordKey(address, day) });
+        }
       } catch (error) {
-        setFailure(error instanceof Error ? error.message : String(error));
+        const message = error instanceof Error ? error.message : String(error);
+        setBoard({ for: client, digs, loaded: true, failure: message });
       } finally {
         setPhase("idle");
         setPending(null);
       }
     },
-    [client, pending, over, digs],
+    [client, loaded, pending, over, digs, address, day, queryClient],
   );
 
   // One call decides the Keeper's mood for the whole screen.
@@ -189,7 +198,7 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
             {DIGS - digs.length} digs left
           </span>
           <span className="rounded-chip border-2 border-ink bg-paper-raised px-3 py-1.5 shadow-hard-xs">
-            {stats?.hunters ?? "—"} {stats?.hunters === 1 ? "hunter" : "hunters"}
+            {hunters} {hunters === 1 ? "hunter" : "hunters"}
           </span>
           <span className="rounded-chip border-2 border-ink bg-ink px-3 py-1.5 text-paper">
             <RevealCountdown />
@@ -225,7 +234,7 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
                 digs={digs}
                 pending={pending}
                 treasure={null}
-                disabled={!ready || over || pending !== null}
+                disabled={!ready || !loaded || over || pending !== null}
                 onDig={handleDig}
               />
             </div>
@@ -258,7 +267,7 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
         </div>
 
         <div className="flex flex-col gap-5">
-          <HuntStatus day={day} digs={digs} pending={pending !== null} hunters={stats?.hunters ?? null} />
+          <HuntStatus day={day} digs={digs} pending={pending !== null} hunters={hunters} />
 
           <section className="rounded-card border-2 border-ink bg-gold p-5 shadow-hard-sm">
             <h2 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em]">

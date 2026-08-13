@@ -5,19 +5,13 @@ import { loadCallsigns } from "@/lib/chain/callsigns";
 
 const MAX_RANGE = BigInt(1900);
 
-export interface DayStats {
-  hunters: number;
-  digs: number;
-  revealed: boolean;
-}
-
 export interface Placing {
   hunter: string;
   callsign: string | null;
   digs: number;
 }
 
-async function scan(day: number, eventName: "Dug" | "TreasureFound") {
+async function scan(day: number, eventName: "TreasureFound") {
   const latest = await publicClient.getBlockNumber();
   const event = getAbiItem({ abi: DAILY_ABI, name: eventName }) as AbiEvent;
 
@@ -40,20 +34,6 @@ async function scan(day: number, eventName: "Dug" | "TreasureFound") {
   return logs;
 }
 
-export async function loadDayStats(day: number): Promise<DayStats> {
-  const [info, digLogs] = await Promise.all([
-    publicClient.readContract({
-      address: DAILY_ADDRESS,
-      abi: DAILY_ABI,
-      functionName: "huntInfo",
-      args: [BigInt(day)],
-    }),
-    scan(day, "Dug"),
-  ]);
-
-  return { hunters: Number(info[1]), digs: digLogs.length, revealed: info[4] };
-}
-
 export async function loadPlacings(day: number): Promise<Placing[]> {
   const logs = await scan(day, "TreasureFound");
   const rows = logs.map((log) => {
@@ -65,26 +45,4 @@ export async function loadPlacings(day: number): Promise<Placing[]> {
   return rows
     .map((row) => ({ ...row, callsign: names.get(row.hunter.toLowerCase()) ?? null }))
     .sort((a, b) => a.digs - b.digs);
-}
-
-export async function loadRevealedTreasure(day: number): Promise<{ x: number; y: number } | null> {
-  const info = await publicClient.readContract({
-    address: DAILY_ADDRESS,
-    abi: DAILY_ABI,
-    functionName: "huntInfo",
-    args: [BigInt(day)],
-  });
-  if (!info[4]) return null;
-
-  const [xHandle, yHandle] = await publicClient.readContract({
-    address: DAILY_ADDRESS,
-    abi: DAILY_ABI,
-    functionName: "treasureHandles",
-    args: [BigInt(day)],
-  });
-
-  const { getLightning } = await import("@/lib/chain/inco");
-  const lightning = await getLightning();
-  const [x, y] = await lightning.attestedReveal([xHandle, yHandle]);
-  return { x: Number(x.plaintext.value), y: Number(y.plaintext.value) };
 }

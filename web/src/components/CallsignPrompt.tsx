@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAccount, useWalletClient } from "wagmi";
 import { CALLSIGNS_ABI } from "@/lib/chain/callsigns-abi";
 import { CALLSIGNS_ADDRESS, publicClient } from "@/lib/chain/config";
@@ -8,41 +9,22 @@ import {
   CALLSIGN_PATTERN,
   encodeCallsign,
   isCallsignAvailable,
-  loadCallsign,
   shortenAddress,
 } from "@/lib/chain/callsigns";
+import { callsignKey, useHunter } from "@/lib/use-hunter";
 
 type Status = "idle" | "checking" | "taken" | "free" | "saving";
 
 export function CallsignPrompt() {
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
+  const { callsign, loaded } = useHunter();
+  const queryClient = useQueryClient();
 
-  const [existing, setExisting] = useState<string | null>(null);
-  const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
-
-  const checked = loadedFor === address;
-
-  useEffect(() => {
-    if (!address || loadedFor === address) return;
-    let live = true;
-    loadCallsign(address)
-      .then((name) => {
-        if (!live) return;
-        setExisting(name);
-        setLoadedFor(address);
-      })
-      .catch(() => {
-        if (live) setLoadedFor(address);
-      });
-    return () => {
-      live = false;
-    };
-  }, [address, loadedFor]);
 
   useEffect(() => {
     const name = draft.trim().toLowerCase();
@@ -76,15 +58,15 @@ export function CallsignPrompt() {
         account: walletClient.account,
       });
       await publicClient.waitForTransactionReceipt({ hash });
-      setExisting(name);
+      queryClient.setQueryData(callsignKey(address), name);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
       setError(message.includes("User rejected") ? "You rejected the signature." : message.split("\n")[0]);
       setStatus("free");
     }
-  }, [walletClient, address, draft]);
+  }, [walletClient, address, draft, queryClient]);
 
-  if (!isConnected || !address || !checked || existing || dismissed) return null;
+  if (!isConnected || !address || !loaded || callsign || dismissed) return null;
 
   const name = draft.trim().toLowerCase();
   const valid = CALLSIGN_PATTERN.test(name);

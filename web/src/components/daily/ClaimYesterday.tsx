@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { baseSepolia } from "@reown/appkit/networks";
 import { useAccount, useWalletClient } from "wagmi";
 import { DailyClient } from "@/lib/chain/daily-client";
@@ -17,6 +18,7 @@ type State = "hidden" | "offer" | "working" | "done" | "failed";
 export function ClaimYesterday({ day }: { day: number }) {
   const { address, isConnected, chainId } = useAccount();
   const { data: walletClient } = useWalletClient();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<State>("hidden");
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -67,11 +69,12 @@ export function ClaimYesterday({ day }: { day: number }) {
       const client = new DailyClient(day, walletClient, address, () => {});
       await client.claim(day);
       setState("done");
+      void queryClient.invalidateQueries({ queryKey: ["record", address.toLowerCase()] });
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error));
       setState("failed");
     }
-  }, [walletClient, address, day]);
+  }, [walletClient, address, day, queryClient]);
 
   if (state === "hidden") return null;
 
