@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { baseSepolia } from "@reown/appkit/networks";
 import { useAccount, useWalletClient } from "wagmi";
-import { useHuntStatus } from "@/components/app/hunt-status";
 import { DailyMap } from "@/components/daily/DailyMap";
 import { DigResult } from "@/components/daily/DigResult";
+import { HuntStatus } from "@/components/daily/HuntStatus";
 import { RevealCountdown } from "@/components/daily/RevealCountdown";
 import { VictoryOverlay } from "@/components/daily/VictoryOverlay";
 import { ConnectButton } from "@/components/ConnectButton";
@@ -56,8 +56,6 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
   // and the Keeper settles into guarding the sealed result.
   const [dismissed, setDismissed] = useState(false);
 
-  const { publish } = useHuntStatus();
-
   const ready = isConnected && chainId === baseSepolia.id && !!walletClient && !!address;
 
   const client = useMemo(
@@ -68,17 +66,13 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
   useEffect(() => {
     let live = true;
     loadDayStats(day)
-      .then((next) => {
-        if (!live) return;
-        setStats(next);
-        publish({ day, hunters: next.hunters });
-      })
+      .then((next) => live && setStats(next))
       .catch(() => {});
     loadPlacings(day - 1).then((next) => live && setYesterday(next)).catch(() => {});
     return () => {
       live = false;
     };
-  }, [day, digs.length, publish]);
+  }, [day, digs.length]);
 
   useEffect(() => {
     if (!client) return;
@@ -89,7 +83,6 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
         if (!live) return;
         setDigs(snapshot.digs);
         setLoaded(true);
-        publish({ day, digs: snapshot.digs, loaded: true });
       })
       .catch((error) => {
         if (!live) return;
@@ -99,7 +92,7 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
     return () => {
       live = false;
     };
-  }, [client, day, publish]);
+  }, [client, day]);
 
   const over = isOver(digs);
   const latest = digs[digs.length - 1];
@@ -110,20 +103,17 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
       if (!client || pending || over || alreadyDug(digs, tile)) return;
       setPending(tile);
       setFailure(null);
-      publish({ pending: true });
       try {
         const snapshot = await client.dig(tile);
         setDigs(snapshot.digs);
-        publish({ digs: snapshot.digs });
       } catch (error) {
         setFailure(error instanceof Error ? error.message : String(error));
       } finally {
         setPhase("idle");
         setPending(null);
-        publish({ pending: false });
       }
     },
-    [client, pending, over, digs, publish],
+    [client, pending, over, digs],
   );
 
   // One call decides the Keeper's mood for the whole screen.
@@ -256,6 +246,8 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
         </div>
 
         <div className="flex flex-col gap-5">
+          <HuntStatus day={day} digs={digs} pending={pending !== null} hunters={stats?.hunters ?? null} />
+
           <section className="rounded-card border-2 border-ink bg-gold p-5 shadow-hard-sm">
             <h2 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em]">
               <LockIcon className="size-3.5 shrink-0" strokeWidth={2.4} />

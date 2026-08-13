@@ -6,7 +6,6 @@ import { DailyMap } from "@/components/daily/DailyMap";
 import { ClaimYesterday } from "@/components/daily/ClaimYesterday";
 import { TrailChips } from "@/components/daily/TrailChips";
 import { ShareResult } from "@/components/daily/ShareResult";
-import { useHuntStatus } from "@/components/app/hunt-status";
 import { KeeperMascot } from "@/components/mascot/KeeperMascot";
 import { shortenAddress } from "@/lib/chain/callsigns";
 import { DIGS, huntNumber, sectorName, type Dig } from "@/lib/daily";
@@ -20,6 +19,7 @@ const STEP_MS = 520;
 
 interface RecapScreenProps {
   recap: Recap;
+  today: number;
 }
 
 function resultLine(row: Standing): string {
@@ -28,9 +28,8 @@ function resultLine(row: Standing): string {
   return missLine(row.closest);
 }
 
-export function RecapScreen({ recap }: RecapScreenProps) {
+export function RecapScreen({ recap, today }: RecapScreenProps) {
   const { address, callsign } = useHunter();
-  const { status } = useHuntStatus();
   const [selected, setSelected] = useState(0);
   const [step, setStep] = useState(0);
 
@@ -54,7 +53,7 @@ export function RecapScreen({ recap }: RecapScreenProps) {
 
   // The card, the rail and this panel all read the same standing and the same
   // record. Nothing re-derives a rank or a streak of its own.
-  const record = usePlayerRecord(address, status.day);
+  const record = usePlayerRecord(address, today);
   const myTrail = mine
     ? (byHunter.get(mine.hunter.toLowerCase())?.digs ?? []).map((entry) => entry.temperature)
     : [];

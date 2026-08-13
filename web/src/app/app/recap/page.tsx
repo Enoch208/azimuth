@@ -7,5 +7,5 @@ export const revalidate = 60;
 export default async function RecapPage() {
   const today = await currentDay();
   const recap = await loadRecap(today - 1);
-  return <RecapScreen recap={recap} />;
+  return <RecapScreen recap={recap} today={today} />;
 }

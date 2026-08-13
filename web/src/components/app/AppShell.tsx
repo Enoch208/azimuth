@@ -4,8 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ConnectButton } from "@/components/ConnectButton";
-import { HuntStatusProvider } from "@/components/app/hunt-status";
-import { StatusRail } from "@/components/app/StatusRail";
 import { AzimuthMark } from "@/components/marks/AzimuthMark";
 import { BearingIcon, CrosshairIcon, SealIcon } from "@/components/marks/Icons";
 
@@ -23,22 +21,17 @@ function isActive(pathname: string, href: string, exact: boolean): boolean {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   return (
-    <HuntStatusProvider>
-    <div className="min-h-screen lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
-      {/* Desktop only. Mobile keeps the bottom nav rather than stacking this
-          rail above the board, which would push the game off the fold. */}
-      <aside className="hidden border-r-2 border-ink bg-paper-deep lg:flex lg:flex-col">
-        <div className="sticky top-0 flex max-h-screen flex-col gap-4 overflow-y-auto p-4">
-          <Link href="/" className="flex min-h-11 items-center gap-3 px-1">
+    <div className="min-h-screen lg:grid lg:h-screen lg:grid-cols-[15rem_minmax(0,1fr)] lg:overflow-hidden">
+      <aside className="hidden border-r-2 border-ink bg-paper-raised lg:flex lg:h-full lg:flex-col">
+        <div className="flex h-full flex-col gap-6 p-6">
+          <Link href="/" className="flex min-h-11 items-center gap-3">
             <AzimuthMark className="size-6 text-ink" />
             <span className="font-display text-sm font-medium tracking-[0.24em]">AZIMUTH</span>
           </Link>
 
           <ConnectButton className="w-full" />
 
-          <StatusRail />
-
-          <nav className="flex flex-col gap-1.5 border-t-2 border-paper-sunk pt-4">
+          <nav className="flex flex-col gap-1.5 border-t-2 border-paper-sunk pt-6">
             {DESTINATIONS.map((item) => {
               const active = isActive(pathname, item.href, item.exact);
               return (
@@ -60,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col lg:min-h-0 lg:overflow-y-auto">
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b-2 border-ink bg-paper/90 px-5 backdrop-blur-sm sm:px-8 lg:hidden">
           <Link href="/" className="flex min-h-11 items-center gap-2.5">
             <AzimuthMark className="size-5 text-ink" />
@@ -90,6 +83,5 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </div>
     </div>
-    </HuntStatusProvider>
   );
 }
