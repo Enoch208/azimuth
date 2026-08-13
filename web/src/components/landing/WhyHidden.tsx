@@ -29,6 +29,10 @@ const SEALED = [
     label: "Who found it",
     line: "Sealed until midnight. Naming a winner during the day would point straight at the treasure — it is their last dug tile.",
   },
+  {
+    label: "Your last word",
+    line: "Out of digs, you may name one tile — encrypted in your browser, checked against a coordinate the contract cannot read, answered to you alone.",
+  },
 ];
 
 export function WhyHidden() {

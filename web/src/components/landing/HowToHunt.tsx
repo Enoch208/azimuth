@@ -1,6 +1,6 @@
 import { KeeperMascot } from "@/components/mascot/KeeperMascot";
 import { TemperatureGlyph } from "@/components/marks/TemperatureGlyph";
-import { CrosshairIcon, SealIcon, TimerIcon } from "@/components/marks/Icons";
+import { CrosshairIcon, LockIcon, SealIcon, TimerIcon } from "@/components/marks/Icons";
 import { DIGS, FIELD, TEMPERATURES, type Temperature } from "@/lib/daily";
 
 // Coldest to warmest, the order a hunter learns them in.
@@ -28,7 +28,7 @@ const STEPS = [
     chip: "Yours alone",
     Icon: SealIcon,
     body: "Your answer is decrypted to your wallet and nobody else's. Six digs, each one narrowing the map, with nothing to copy from the hunter beside you.",
-    outcome: "Rivals see that you dug. They never see what it told you.",
+    outcome: "Rivals see that you dug — the board marks it. They never see what it told you.",
     tokens: [{ label: "Encrypted to your wallet", className: "bg-amber text-ink" }],
     tilt: "",
     lift: "lg:-translate-y-10",
@@ -36,6 +36,18 @@ const STEPS = [
   },
   {
     index: "03",
+    title: "Name it",
+    chip: "One guess",
+    Icon: LockIcon,
+    body: `Spend all ${DIGS} without finding it and you get one last word: a tile you encrypt yourself, compared against a coordinate the contract cannot read either.`,
+    outcome: "The only move on the board nobody can watch — not even us.",
+    tokens: [{ label: "Encrypted by you", className: "bg-gold text-ink" }],
+    tilt: "lg:rotate-[0.6deg]",
+    lift: "",
+    shadow: "shadow-hard-sm",
+  },
+  {
+    index: "04",
     title: "Come back tomorrow",
     chip: "Midnight",
     Icon: TimerIcon,
@@ -58,8 +70,9 @@ export function HowToHunt() {
               How a hunt works
             </h2>
             <p className="mt-4 text-base leading-relaxed text-paper">
-              Six digs on one map that everybody shares. Every dig tells you how close you are, and
-              tells nobody else. That gap is the game.
+              Six digs on one map that everybody shares, and one sealed guess if they all miss.
+              Every move you make is public. Every answer you get is yours alone. That gap is the
+              game.
             </p>
           </div>
           <KeeperMascot state="idle" size="lg" className="self-center" />
@@ -93,7 +106,7 @@ export function HowToHunt() {
           </ol>
         </div>
 
-        <ol className="mt-12 grid gap-7 lg:grid-cols-3 lg:gap-6">
+        <ol className="mt-12 grid gap-7 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
           {STEPS.map((step) => (
             <li
               key={step.index}
