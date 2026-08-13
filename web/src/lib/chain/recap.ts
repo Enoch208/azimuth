@@ -15,7 +15,12 @@ export interface RecapTrail {
 }
 
 export interface Recap {
+  // The day actually being shown. When the network will not decrypt yesterday,
+  // this falls back to the most recent day it will, so the page always has a
+  // real hunt on it rather than an empty state.
   day: number;
+  // The day that was asked for. Differs from day only during a fallback.
+  requestedDay: number;
   // The contract has opened the map: revealDay ran and the treasure is public.
   revealed: boolean;
   // The plaintext actually came back. These differ when the map is open on
@@ -98,7 +103,7 @@ export async function loadRecap(day: number): Promise<Recap> {
   // Backoff is only ever entered after an opened day failed to decrypt, so the
   // map is known to be open here — it just cannot be read yet.
   if ((unreadUntil.get(day) ?? 0) > Date.now()) {
-    return { day, revealed: true, readable: false, treasure: null, trails: [] };
+    return { day, requestedDay: day, revealed: true, readable: false, treasure: null, trails: [] };
   }
 
   const info = await publicClient.readContract({
@@ -109,7 +114,7 @@ export async function loadRecap(day: number): Promise<Recap> {
   });
 
   if (!info[3] || !info[4]) {
-    return { day, revealed: false, readable: false, treasure: null, trails: [] };
+    return { day, requestedDay: day, revealed: false, readable: false, treasure: null, trails: [] };
   }
 
   const [handles, rows] = await Promise.all([
@@ -131,7 +136,7 @@ export async function loadRecap(day: number): Promise<Recap> {
     // The map is open on chain; the covalidator will not serve the plaintext
     // yet. Reporting "sealed" here would tell the player the day never opened.
     unreadUntil.set(day, Date.now() + UNREAD_MS);
-    return { day, revealed: true, readable: false, treasure: null, trails: [] };
+    return { day, requestedDay: day, revealed: true, readable: false, treasure: null, trails: [] };
   }
 
   // Once the day is open every trail is public, so one batch covers the board.
@@ -167,11 +172,29 @@ export async function loadRecap(day: number): Promise<Recap> {
     return a.digs.length - b.digs.length;
   });
 
-  const recap: Recap = { day, revealed: true, readable: true, treasure, trails };
+  const recap: Recap = { day, requestedDay: day, revealed: true, readable: true, treasure, trails };
   // Only a fully-read day is worth keeping. A trail whose temperatures have not
   // been revealed yet would otherwise be cached with holes in it forever.
   if (trails.every((trail) => trail.digs.every((dig) => dig.temperature !== null))) {
     opened.set(day, recap);
   }
   return recap;
+}
+
+// How many days back to look for something readable. A hunt runs daily, so
+// three covers a weekend of covalidator trouble without trawling history.
+const FALLBACK_DAYS = 3;
+
+// Yesterday is what a player came for, but an unreadable yesterday should not
+// leave the page blank. Walk back until a day decrypts, and let the caller say
+// that it did — an unlabelled older day would be worse than an empty one.
+export async function loadRecapOrLatest(day: number): Promise<Recap> {
+  const asked = await loadRecap(day);
+  if (asked.readable) return asked;
+
+  for (let back = 1; back <= FALLBACK_DAYS; back += 1) {
+    const older = await loadRecap(day - back).catch(() => null);
+    if (older?.readable) return { ...older, requestedDay: day };
+  }
+  return asked;
 }

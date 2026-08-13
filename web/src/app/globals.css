@@ -385,14 +385,60 @@
   letter-spacing: -0.01em;
 }
 
+/* A pressable thing behaves like a printed object sitting on paper: it lifts
+   toward you on hover and is pushed flat when clicked, with the shadow
+   shortening by exactly the distance it travelled so the light stays honest. */
 @utility press {
   transition:
-    transform 90ms cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 90ms cubic-bezier(0.4, 0, 0.2, 1);
+    transform 120ms cubic-bezier(0.34, 1.4, 0.64, 1),
+    box-shadow 120ms cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  @media (hover: hover) {
+    &:hover {
+      transform: translate(-1px, -2px);
+    }
+  }
 
   &:active {
     transform: translate(3px, 3px);
     box-shadow: var(--shadow-hard-xs);
+    transition-duration: 40ms;
+  }
+}
+
+/* Cards that are not buttons: they acknowledge a cursor without pretending to
+   be clickable. */
+@utility lift {
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-hard);
+    }
+  }
+}
+
+/* A tile is the one thing on the board the player physically operates, so it
+   gets the most travel — and it must never move once it has been dug. */
+@utility tile {
+  transition:
+    transform 130ms cubic-bezier(0.34, 1.4, 0.64, 1),
+    box-shadow 130ms cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  @media (hover: hover) {
+    &:not(:disabled):hover {
+      transform: translate(-1px, -3px);
+      box-shadow: var(--shadow-hard-sm);
+    }
+  }
+
+  &:not(:disabled):active {
+    transform: translate(1px, 1px);
+    box-shadow: none;
+    transition-duration: 40ms;
   }
 }
 

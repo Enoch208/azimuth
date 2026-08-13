@@ -53,7 +53,7 @@ export function DigResult({ day, digs }: DigResultProps) {
 
   return (
     <section
-      className={`overflow-hidden rounded-panel border-2 border-ink shadow-hard-lg ${won ? "bg-ink text-paper" : "bg-paper-deep"}`}
+      className={`animate-strike overflow-hidden rounded-panel border-2 border-ink shadow-hard-lg ${won ? "bg-ink text-paper" : "bg-paper-deep"}`}
     >
       <div className="flex flex-wrap items-start gap-5 px-5 py-6 sm:flex-nowrap sm:px-7 sm:py-8">
         {/* Won, the Keeper guards a sealed result. Lost, it is as worn out as

@@ -71,14 +71,25 @@ export function VictoryOverlay({ day, digs, onClose }: VictoryOverlayProps) {
   // sealed copy says, at the moment the copy appears. With motion reduced it
   // arrives already sealed instead of performing the beat.
   const calm = usePrefersReducedMotion();
-  const [settled, setSettled] = useState(false);
-  const guarding = calm || settled;
+  // The moment is a sequence, not a state: the board settles, the Keeper works
+  // out what happened, then it bursts. With motion reduced it arrives finished.
+  const [beat, setBeat] = useState(calm ? 3 : 0);
 
   useEffect(() => {
-    if (calm) return;
-    const timer = window.setTimeout(() => setSettled(true), 2200);
-    return () => window.clearTimeout(timer);
+    if (calm) {
+      return;
+    }
+    const timers = [
+      window.setTimeout(() => setBeat(1), 260),
+      window.setTimeout(() => setBeat(2), 620),
+      window.setTimeout(() => setBeat(3), 2400),
+    ];
+    return () => timers.forEach(window.clearTimeout);
   }, [calm]);
+
+  const realising = beat >= 1;
+  const bursting = beat >= 2;
+  const guarding = beat >= 3;
 
   // Own the focus while we are covering the board, and hand it back on exit.
   useEffect(() => {
@@ -130,7 +141,7 @@ export function VictoryOverlay({ day, digs, onClose }: VictoryOverlayProps) {
         {/* Sparks burst from behind the Keeper, never over the copy. */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-56 overflow-visible" aria-hidden="true">
           <div className="absolute left-1/2 top-24">
-            {!calm &&
+            {bursting &&
               SPARKS.map((spark, index) => (
                 <span
                   key={index}
@@ -152,25 +163,35 @@ export function VictoryOverlay({ day, digs, onClose }: VictoryOverlayProps) {
 
         <div className="relative px-6 pb-7 pt-8 sm:px-8">
           <div className="flex justify-center">
-            <KeeperMascot state={guarding ? "sealed" : "found"} size="lg" />
+            <KeeperMascot
+              state={guarding ? "sealed" : realising ? "found" : "searching"}
+              size="lg"
+            />
           </div>
 
-          <p className="mt-4 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-ink-faint">
+          <p
+            className={`mt-4 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-ink-faint transition-opacity duration-300 ${realising ? "opacity-100" : "opacity-0"}`}
+          >
             Azimuth #{huntNumber(day)}
           </p>
 
           <h2
             id="victory-title"
-            className="mt-2 text-center font-display text-[clamp(2rem,7vw,3.1rem)] font-medium leading-[0.95] tracking-[-0.035em]"
+            className={`mt-2 text-center font-display text-[clamp(2rem,7vw,3.1rem)] font-medium leading-[0.95] tracking-[-0.035em] transition-all duration-500 ${bursting ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}
           >
             Treasure found!
           </h2>
 
-          <p className="num mt-3 text-center text-base font-medium text-ink-soft">
+          <p
+            className={`num mt-3 text-center text-base font-medium text-ink-soft transition-all delay-100 duration-500 ${bursting ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}
+          >
             {victoryLine(digs)}
           </p>
 
-          <ol className="mt-6 flex flex-wrap items-center justify-center gap-2" aria-label="Your dig trail">
+          <ol
+            className={`mt-6 flex flex-wrap items-center justify-center gap-2 transition-all delay-200 duration-500 ${bursting ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}
+            aria-label="Your dig trail"
+          >
             {outcome.trail.map((temperature, index) => (
               <li
                 key={index}
@@ -195,7 +216,9 @@ export function VictoryOverlay({ day, digs, onClose }: VictoryOverlayProps) {
             ))}
           </ol>
 
-          <div className="mt-6 rounded-card border-2 border-ink bg-ink px-4 py-3.5 text-paper">
+          <div
+            className={`mt-6 rounded-card border-2 border-ink bg-ink px-4 py-3.5 text-paper transition-all duration-500 ${guarding ? "scale-100 opacity-100" : "scale-[0.98] opacity-70"}`}
+          >
             <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold">
               <LockIcon className="size-4 shrink-0" strokeWidth={2.2} />
               Your result is sealed

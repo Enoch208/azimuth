@@ -38,7 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex min-h-11 items-center gap-3 rounded-chip border-2 px-3 text-sm font-medium transition-colors ${
+                  className={`press flex min-h-11 items-center gap-3 rounded-chip border-2 px-3 text-sm font-medium ${
                     active
                       ? "border-ink bg-amber shadow-hard-xs"
                       : "border-transparent text-ink-soft hover:border-paper-sunk hover:text-ink"

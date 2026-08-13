@@ -11,7 +11,7 @@ export default async function RecapPage() {
   // Catch the read, not the render. An error thrown while React renders would
   // never reach a try/catch here — that needs an error boundary.
   const recap = await getRecap(day).catch(
-    (): Recap => ({ day, revealed: false, readable: false, treasure: null, trails: [] }),
+    (): Recap => ({ day, requestedDay: day, revealed: false, readable: false, treasure: null, trails: [] }),
   );
 
   return <RecapScreen recap={recap} today={today} />;

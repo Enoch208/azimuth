@@ -97,7 +97,7 @@ export function HowToHunt() {
           {STEPS.map((step) => (
             <li
               key={step.index}
-              className={`flex flex-col rounded-card border-2 border-ink bg-paper-raised p-6 text-ink ${step.shadow} ${step.tilt} ${step.lift} sm:p-7`}
+              className={`lift flex flex-col rounded-card border-2 border-ink bg-paper-raised p-6 text-ink ${step.shadow} ${step.tilt} ${step.lift} sm:p-7`}
             >
               <div className="flex items-start justify-between gap-4">
                 <step.Icon className="size-14 text-ink" strokeWidth={1.5} />

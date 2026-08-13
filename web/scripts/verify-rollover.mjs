@@ -76,5 +76,26 @@ check("today has its own hunt, still sealed", !todayInfo[4]);
 const [txHandle] = await read("treasureHandles", [BigInt(today)]);
 check("today's treasure differs from yesterday's", txHandle !== xHandle);
 
+// The checks above read the contract. They cannot tell you whether the
+// covalidator will actually hand back the plaintext, and a day can sit
+// revealed-but-undecryptable for hours — during which every check here passes
+// while the recap has nothing to show. RECAP_URL closes that gap by asking the
+// page what a player would see.
+const recapUrl = process.env.RECAP_URL;
+if (recapUrl) {
+  try {
+    const body = await fetch(recapUrl).then((r) => r.text());
+    const readable = /The treasure was\s*(<!--\s*-->)?\s*[A-K]\d+/.test(body);
+    check("the recap actually renders a revealed treasure", readable, recapUrl);
+    if (!readable && /reading is not/.test(body)) {
+      console.log("      the map is open on chain but the network will not decrypt it yet");
+    }
+  } catch (error) {
+    check("the recap page could be reached", false, String(error).slice(0, 80));
+  }
+} else {
+  console.log("  ..  set RECAP_URL to also check the page a player actually sees");
+}
+
 console.log(`\n${failures === 0 ? "rollover verified" : `${failures} checks failed`}`);
 process.exit(failures ? 1 : 0);

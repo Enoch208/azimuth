@@ -113,7 +113,7 @@ export function WhyHidden() {
             {SEALED.map((item) => (
               <li
                 key={item.label}
-                className="rounded-card border-2 border-ink bg-ink p-5 text-paper shadow-hard-sm"
+                className="lift rounded-card border-2 border-ink bg-ink p-5 text-paper shadow-hard-sm"
               >
                 <h4 className="flex items-center gap-2 font-display text-lg font-medium tracking-tight text-gold">
                   <LockIcon className="size-4 shrink-0" strokeWidth={2.4} />

@@ -133,6 +133,13 @@ export function RecapScreen({ recap, today }: RecapScreenProps) {
           <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-gold">
             Azimuth #{huntNumber(recap.day)} · the map is open
           </p>
+          {/* Showing an older day is only acceptable if it says so. */}
+          {recap.day !== recap.requestedDay ? (
+            <p className="mt-2 inline-flex items-center rounded-chip border-2 border-paper/25 bg-paper/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-paper/80">
+              Azimuth #{huntNumber(recap.requestedDay)} is unsealed but not readable yet — showing
+              the last map that opened
+            </p>
+          ) : null}
           <h1 className="animate-strike mt-2 font-display text-[clamp(2.2rem,6vw,4rem)] font-medium leading-[0.95] tracking-[-0.035em]">
             The treasure was {sectorName(recap.treasure)}
           </h1>
@@ -220,7 +227,7 @@ export function RecapScreen({ recap, today }: RecapScreenProps) {
                       setStep(0);
                     }}
                     aria-current={index === selected ? "true" : undefined}
-                    className={`flex min-h-11 w-full items-center gap-3 rounded-chip border-2 px-3 py-2 text-left transition-colors ${
+                    className={`press flex min-h-11 w-full items-center gap-3 rounded-chip border-2 px-3 py-2 text-left ${
                       index === selected
                         ? "border-ink bg-amber shadow-hard-xs"
                         : isMine

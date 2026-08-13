@@ -55,8 +55,8 @@ export function DailyMap({ digs, pending, treasure, disabled, onDig }: DailyMapP
                 ? `Tile ${tile.x + 1}, ${tile.y + 1}: ${style?.label ?? "still arriving"}`
                 : `Dig tile ${tile.x + 1}, ${tile.y + 1}`
             }
-            className={`relative aspect-square rounded-[6px] border-2 border-ink text-[clamp(0.85rem,2.6vw,1.5rem)] leading-none transition-transform duration-150 sm:rounded-lg ${
-              locked ? "cursor-default" : "cursor-pointer hover:-translate-y-[3px] active:translate-y-0"
+            className={`tile relative aspect-square rounded-[6px] border-2 border-ink leading-none sm:rounded-lg ${
+              locked ? "cursor-default" : "cursor-pointer"
             } ${isPending ? "animate-dig-pulse" : ""} ${
               !dug && !isPending ? "bg-paper-raised shadow-hard-xs" : ""
             }`}
