@@ -81,25 +81,41 @@ async function sweep() {
     }
   }
 
-  // Reported so a failed sweep is visible in the cron log rather than silent.
-  return Response.json({
+  // A trail left sealed is the one outcome this endpoint exists to prevent, so
+  // it answers 500 and the scheduler retries. Reporting 200 with a failure count
+  // buried in the body let a red run look green.
+  const body = {
     day,
     opened: true,
     reopened: !info[4],
     trails: revealed.length,
     failed: failed.length,
     hunters: hunters.length,
-  });
+  };
+  return Response.json(body, { status: failed.length > 0 ? 500 : 200 });
 }
 
-export async function POST() {
-  return sweep();
-}
-
-export async function GET(request: Request) {
+// Every sweep spends the keeper's gas and the contract's Inco fee float, and
+// re-revealing an already open trail spends both again — so this is guarded,
+// and it is guarded closed. A missing secret refuses rather than opening the
+// endpoint to the world.
+function authorised(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
-  if (secret && request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!secret) return false;
+  return request.headers.get("authorization") === `Bearer ${secret}`;
+}
+
+async function guarded(request: Request) {
+  if (!authorised(request)) {
     return Response.json({ error: "Not authorised" }, { status: 401 });
   }
   return sweep();
+}
+
+export async function POST(request: Request) {
+  return guarded(request);
+}
+
+export async function GET(request: Request) {
+  return guarded(request);
 }

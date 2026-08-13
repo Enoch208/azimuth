@@ -153,10 +153,14 @@ export class DailyClient {
     const events = parseEventLogs({ abi: DAILY_ABI, eventName: "Dug", logs: receipt.logs });
     const args = events[0].args as unknown as DugArgs;
 
+    // The dig is on chain now and has already cost one of the six. Record it
+    // before asking for the answer, so a covalidator that never replies leaves
+    // an unread tile on the board rather than erasing a move that happened.
+    this.digs.push({ tile, temperature: null });
+
     this.onPhase("reading");
     const temperature = await this.readTemperature(args.temperature);
-
-    this.digs.push({ tile, temperature });
+    this.digs[this.digs.length - 1] = { tile, temperature };
 
     this.onPhase("idle");
     return this.snapshot();

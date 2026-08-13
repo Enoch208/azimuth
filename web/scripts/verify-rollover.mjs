@@ -6,11 +6,17 @@
 import { createPublicClient, http, getAbiItem } from "viem";
 import { baseSepolia } from "viem/chains";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const WEB = "/Users/enoch/Developer/personal/azimuth/web";
-const abiSrc = fs.readFileSync(`${WEB}/src/lib/chain/daily-abi.ts`, "utf8");
+const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = path.resolve(WEB, "..");
+const abiSrc = fs.readFileSync(path.join(WEB, "src/lib/chain/daily-abi.ts"), "utf8");
 const ABI = JSON.parse(abiSrc.slice(abiSrc.indexOf("["), abiSrc.lastIndexOf("]") + 1));
-const DAILY = fs.readFileSync("/Users/enoch/Developer/personal/azimuth/contracts/.daily-address", "utf8").trim();
+const DAILY = (
+  process.env.NEXT_PUBLIC_DAILY_ADDRESS
+  ?? fs.readFileSync(path.join(ROOT, "contracts/.daily-address"), "utf8")
+).trim();
 
 const client = createPublicClient({ chain: baseSepolia, transport: http("https://sepolia.base.org") });
 

@@ -7,6 +7,7 @@ import { useAccount, useWalletClient } from "wagmi";
 import { DailyMap } from "@/components/daily/DailyMap";
 import { DigResult } from "@/components/daily/DigResult";
 import { HuntStatus } from "@/components/daily/HuntStatus";
+import { GetTestEth } from "@/components/daily/GetTestEth";
 import { SealedGuess } from "@/components/daily/SealedGuess";
 import { SoundToggle } from "@/components/daily/SoundToggle";
 import { RevealCountdown } from "@/components/daily/RevealCountdown";
@@ -179,7 +180,18 @@ export function DailyHuntScreen({ day, hunters, yesterday, digs: allDigs }: Dail
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        setBoard({ for: client, digs, loaded: true, failure: message, sealed, guessedTile, guessRight });
+        // A dig that landed but could not be read is still spent. Take the
+        // board back from the client rather than the copy captured before it.
+        const after = client.snapshot();
+        setBoard({
+          for: client,
+          digs: after.digs,
+          loaded: true,
+          failure: message,
+          sealed: after.sealed,
+          guessedTile: after.guessedTile,
+          guessRight: after.guessRight,
+        });
       } finally {
         setPhase("idle");
         setPending(null);
@@ -376,6 +388,8 @@ export function DailyHuntScreen({ day, hunters, yesterday, digs: allDigs }: Dail
         </div>
 
         <div className="flex flex-col gap-5">
+          <GetTestEth />
+
           {offering || sealed ? (
             <SealedGuess
               state={sealed ? "sealed" : sealing ? "sealing" : "choosing"}

@@ -110,12 +110,23 @@ player generates that the contract computes on without ever seeing.
 | | |
 |---|---|
 | Daily hunt | [`0x86C59B978B14bc8B2914A70548baAB2700bd58d6`](https://sepolia.basescan.org/address/0x86C59B978B14bc8B2914A70548baAB2700bd58d6) |
+| Verified source | [Blockscout](https://base-sepolia.blockscout.com/address/0x86C59B978B14bc8B2914A70548baAB2700bd58d6?tab=contract) · [Sourcify](https://repo.sourcify.dev/84532/0x86C59B978B14bc8B2914A70548baAB2700bd58d6) — creation and runtime both match |
 | Callsigns | [`0x14EFc65668aFEAB2De1DfF8D8a88b8EE5F357f19`](https://sepolia.basescan.org/address/0x14EFc65668aFEAB2De1DfF8D8a88b8EE5F357f19) |
 | Network | Base Sepolia (84532) |
 | Inco Lightning | `0x4b9911b0191B0b6a6eA8F2Ed562e20Cff5AC8624` |
 
 Transaction-level evidence, including a wallet failing to decrypt another wallet's answer, is
 in [`evidence/deployment.md`](evidence/deployment.md).
+
+The source is verified on Sourcify and Blockscout, where the runtime bytecode matches this
+repository exactly. BaseScan's own verification needs an Etherscan API key, which this
+deployment does not carry:
+
+```bash
+cd contracts
+forge verify-contract 0x86C59B978B14bc8B2914A70548baAB2700bd58d6 \
+  src/AzimuthDaily.sol:AzimuthDaily --chain-id 84532 --etherscan-api-key $ETHERSCAN_API_KEY
+```
 
 ## Sized by simulation, not by feel
 
