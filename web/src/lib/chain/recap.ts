@@ -3,7 +3,7 @@ import { DAILY_ABI } from "@/lib/chain/daily-abi";
 import { DAILY_ADDRESS, publicClient } from "@/lib/chain/config";
 import { getLightning } from "@/lib/chain/inco";
 import { loadCallsigns } from "@/lib/chain/callsigns";
-import type { Dig, Temperature, Tile } from "@/lib/daily";
+import { tileFromIndex, type Dig, type Temperature, type Tile } from "@/lib/daily";
 
 const MAX_RANGE = BigInt(1900);
 
@@ -12,6 +12,9 @@ export interface RecapTrail {
   callsign: string | null;
   digs: Dig[];
   found: boolean;
+  // The sealed guess, once the map has opened it. Null if none was sealed, and
+  // null while the network still will not serve the plaintext.
+  guess: { tile: Tile; right: boolean } | null;
 }
 
 export interface Recap {
@@ -90,6 +93,41 @@ async function dugOn(day: number) {
   return rows;
 }
 
+// Every sealed guess on an opened day, read in one batch. A day nobody sealed
+// on costs one contract read per hunter and no decryption at all.
+async function guessesOn(day: number, hunters: string[]) {
+  const found = new Map<string, { tile: Tile; right: boolean }>();
+  if (hunters.length === 0) return found;
+
+  const records = await Promise.all(
+    hunters.map((hunter) =>
+      publicClient
+        .readContract({
+          address: DAILY_ADDRESS,
+          abi: DAILY_ABI,
+          functionName: "guessOf",
+          args: [BigInt(day), hunter as Hex],
+        })
+        .then((record) => ({ hunter, record }))
+        .catch(() => null),
+    ),
+  );
+
+  const sealed = records.filter((entry): entry is NonNullable<typeof entry> => entry !== null && entry.record[0]);
+  if (sealed.length === 0) return found;
+
+  const lightning = await getLightning();
+  const handles = sealed.flatMap((entry) => [entry.record[1] as Hex, entry.record[2] as Hex]);
+  const revealed = await lightning.attestedReveal(handles);
+
+  sealed.forEach((entry, index) => {
+    const tileIndex = Number(revealed[index * 2].plaintext.value);
+    const right = Boolean(revealed[index * 2 + 1].plaintext.value);
+    found.set(entry.hunter.toLowerCase(), { tile: tileFromIndex(tileIndex), right });
+  });
+  return found;
+}
+
 // An opened day never changes again: the treasure is public, the trails are
 // public, and no further digs can land on it. Re-decrypting all of that on
 // every request was most of the minute the page used to take.
@@ -159,12 +197,18 @@ export async function loadRecap(day: number): Promise<Recap> {
     byHunter.set(row.hunter, list);
   }
 
-  const names = await loadCallsigns([...byHunter.keys()]).catch(() => new Map<string, string>());
+  const hunters = [...byHunter.keys()];
+  const [names, sealed] = await Promise.all([
+    loadCallsigns(hunters).catch(() => new Map<string, string>()),
+    guessesOn(day, hunters).catch(() => new Map<string, { tile: Tile; right: boolean }>()),
+  ]);
+
   const trails: RecapTrail[] = [...byHunter.entries()].map(([hunter, digs]) => ({
     hunter,
     callsign: names.get(hunter.toLowerCase()) ?? null,
     digs,
     found: digs.some((dig) => dig.temperature === 0),
+    guess: sealed.get(hunter.toLowerCase()) ?? null,
   }));
 
   trails.sort((a, b) => {

@@ -13,6 +13,8 @@ export interface RevealedTrail {
   hunter: string;
   callsign: string | null;
   digs: RevealedDig[];
+  // The last word, once the map has opened it. Null if none was sealed.
+  guess: { tile: Tile; right: boolean } | null;
 }
 
 export interface Standing {
@@ -20,6 +22,9 @@ export interface Standing {
   hunter: string;
   callsign: string | null;
   found: boolean;
+  // How the treasure was reached. A sealed guess counts as a find, but never as
+  // good a one as digging it up.
+  foundBy: "dig" | "guess" | null;
   // For a finder: the dig number the treasure landed on. For everyone else:
   // how many digs they spent.
   digsUsed: number;
@@ -39,6 +44,9 @@ const FOUND_BASE = 105;
 const FOUND_STEP = 5;
 const MISS_BASE = 77;
 const MISS_STEP = 7;
+// A sealed find sits in the gap the two ladders leave: below the worst dug find
+// (75, six digs) and above the best possible miss (70, one tile away).
+const GUESS_FOUND = 73;
 
 export function foundScore(digsUsed: number): number {
   const digs = Math.min(DIGS, Math.max(1, digsUsed));
@@ -57,28 +65,36 @@ export function huntScore(found: boolean, digsUsed: number, closest: number | nu
   return found ? foundScore(digsUsed) : missScore(closest);
 }
 
+export function guessScore(): number {
+  return GUESS_FOUND;
+}
+
 // A standing before it knows where it placed.
 type Measured = Omit<Standing, "rank">;
 
 function measure(treasure: Tile, trail: RevealedTrail): Measured {
   const distances = trail.digs.map((dig) => chebyshev(dig.tile, treasure));
   const foundIndex = distances.findIndex((distance) => distance === 0);
-  const found = foundIndex >= 0;
+  const dug = foundIndex >= 0;
+  const sealed = !dug && trail.guess?.right === true;
+  const found = dug || sealed;
 
   const sorted = [...distances].sort((a, b) => a - b);
   const closest = sorted.length > 0 ? sorted[0] : null;
   // Which dig first reached that best distance. 1-indexed; 0 means no digs.
   const closestOn = closest === null ? 0 : distances.indexOf(closest) + 1;
+  const digsUsed = dug ? foundIndex + 1 : trail.digs.length;
 
   return {
     hunter: trail.hunter,
     callsign: trail.callsign,
     found,
-    digsUsed: found ? foundIndex + 1 : trail.digs.length,
-    closest,
+    foundBy: dug ? "dig" : sealed ? "guess" : null,
+    digsUsed,
+    closest: sealed ? 0 : closest,
     distances: sorted,
     closestOn,
-    score: huntScore(found, found ? foundIndex + 1 : trail.digs.length, closest),
+    score: dug ? foundScore(digsUsed) : sealed ? guessScore() : missScore(closest),
   };
 }
 
@@ -87,6 +103,14 @@ function measure(treasure: Tile, trail: RevealedTrail): Measured {
 function compare(a: Measured, b: Measured): number {
   // A find always beats a miss, however close the miss came.
   if (a.found !== b.found) return a.found ? -1 : 1;
+
+  // Digging it up beats naming it. A sealed guess is one tile out of a hundred
+  // and twenty one; the trail that earned it is the achievement.
+  if (a.foundBy !== b.foundBy) return a.foundBy === "dig" ? -1 : 1;
+
+  if (a.foundBy === "guess" && b.foundBy === "guess") {
+    return a.hunter.toLowerCase() < b.hunter.toLowerCase() ? -1 : 1;
+  }
 
   if (a.found && b.found) {
     if (a.digsUsed !== b.digsUsed) return a.digsUsed - b.digsUsed;

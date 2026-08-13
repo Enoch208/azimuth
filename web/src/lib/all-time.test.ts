@@ -6,6 +6,7 @@ const row = (over: Partial<Standing> & { hunter: string }): Standing => ({
   rank: 1,
   callsign: null,
   found: false,
+  foundBy: null,
   digsUsed: 6,
   closest: 3,
   distances: [3],

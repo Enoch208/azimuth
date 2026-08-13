@@ -21,6 +21,7 @@ function trailAt(hunter: string, distances: number[]): RevealedTrail {
       tile: { x: TREASURE.x + d, y: TREASURE.y },
       temperature: null,
     })),
+    guess: null,
   };
 }
 
@@ -58,7 +59,7 @@ describe("standings", () => {
   it("ranks every finder above every non-finder", () => {
     const rows = standingsFor(TREASURE, [
       trailAt("0xaa", [1, 1, 1]),
-      { hunter: "0xbb", callsign: null, digs: [{ tile: TREASURE, temperature: 0 }] },
+      { hunter: "0xbb", callsign: null, digs: [{ tile: TREASURE, temperature: 0 }], guess: null },
     ]);
     expect(rows[0].hunter).toBe("0xbb");
     expect(rows[0].found).toBe(true);
@@ -110,7 +111,7 @@ describe("standings", () => {
 
     it("puts a hunter with no digs last", () => {
       const rows = standingsFor(TREASURE, [
-        { hunter: "0xaa", callsign: null, digs: [] },
+        { hunter: "0xaa", callsign: null, digs: [], guess: null },
         trailAt("0xbb", [9]),
       ]);
       expect(rows.map((r) => r.hunter)).toEqual(["0xbb", "0xaa"]);
@@ -156,6 +157,7 @@ describe("day 20676, from chain", () => {
       { tile: { x: 6, y: 3 }, temperature: 2 },
       { tile: { x: 5, y: 3 }, temperature: 2 },
     ],
+    guess: null,
   };
   const other: RevealedTrail = {
     hunter: "0x149CAc7e03b1842d7DAaf9C01fea4C1d4F7e3666",
@@ -168,6 +170,7 @@ describe("day 20676, from chain", () => {
       { tile: { x: 4, y: 1 }, temperature: 1 },
       { tile: { x: 5, y: 1 }, temperature: 1 },
     ],
+    guess: null,
   };
 
   it("measures the real distances", () => {
@@ -208,5 +211,56 @@ describe("missLine", () => {
   });
   it("says tiles in the plural", () => {
     expect(missLine(4)).toBe("4 tiles away");
+  });
+});
+
+describe("a sealed guess places between a dug find and a miss", () => {
+  const T: Tile = { x: 5, y: 5 };
+  const missTrail = (hunter: string, tiles: Tile[]): RevealedTrail => ({
+    hunter,
+    callsign: null,
+    digs: tiles.map((tile) => ({ tile, temperature: null })),
+    guess: null,
+  });
+  const withGuess = (hunter: string, tiles: Tile[], guess: Tile, right: boolean): RevealedTrail => ({
+    ...missTrail(hunter, tiles),
+    guess: { tile: guess, right },
+  });
+
+  const SIX: Tile[] = [
+    { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 },
+    { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 },
+  ];
+
+  it("ranks the worst dug find above the best sealed guess", () => {
+    const digger = missTrail("0xdig", [...SIX.slice(0, 5), T]);
+    const sealer = withGuess("0xseal", SIX, T, true);
+    const [first, second] = standingsFor(T, [sealer, digger]);
+    expect(first.hunter).toBe("0xdig");
+    expect(second.hunter).toBe("0xseal");
+    expect(second.foundBy).toBe("guess");
+  });
+
+  it("ranks a right sealed guess above every miss, however close", () => {
+    const sealer = withGuess("0xseal", SIX, T, true);
+    const nearMiss = missTrail("0xnear", [{ x: 5, y: 4 }]);
+    const [first, second] = standingsFor(T, [nearMiss, sealer]);
+    expect(first.hunter).toBe("0xseal");
+    expect(second.hunter).toBe("0xnear");
+  });
+
+  it("treats a wrong sealed guess as the miss it is", () => {
+    const wrong = withGuess("0xwrong", SIX, { x: 0, y: 10 }, false);
+    const [only] = standingsFor(T, [wrong]);
+    expect(only.found).toBe(false);
+    expect(only.foundBy).toBe(null);
+  });
+
+  it("scores a sealed find below any dug find and above any miss", () => {
+    const bestMiss = standingsFor(T, [missTrail("0xa", [{ x: 5, y: 4 }])])[0].score;
+    const sealed = standingsFor(T, [withGuess("0xb", SIX, T, true)])[0].score;
+    const worstDig = standingsFor(T, [missTrail("0xc", [...SIX.slice(0, 5), T])])[0].score;
+    expect(sealed).toBeGreaterThan(bestMiss);
+    expect(sealed).toBeLessThan(worstDig);
   });
 });

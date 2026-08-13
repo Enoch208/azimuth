@@ -23,6 +23,9 @@ interface RecapScreenProps {
 }
 
 function resultLine(row: Standing): string {
+  // A sealed guess is a find, but it is not a dig count — saying "found in 6"
+  // would credit the digs that all missed.
+  if (row.foundBy === "guess") return "Named it · sealed guess";
   if (row.found) return `Found · ${row.digsUsed} ${row.digsUsed === 1 ? "dig" : "digs"}`;
   if (row.closest === null) return "No digs";
   return missLine(row.closest);
@@ -46,6 +49,9 @@ export function RecapScreen({ recap, today }: RecapScreenProps) {
   const row = standings[selected];
   const trail = row ? byHunter.get(row.hunter.toLowerCase()) : undefined;
   const digs: Dig[] = trail ? trail.digs.slice(0, step) : [];
+  // The last word lands after the digs it followed, so the replay reaches it
+  // in the order the hunter did.
+  const sealedGuess = trail?.guess && step >= trail.digs.length ? trail.guess : null;
 
   const mine = address
     ? standings.find((entry) => entry.hunter.toLowerCase() === address.toLowerCase())
@@ -200,10 +206,29 @@ export function RecapScreen({ recap, today }: RecapScreenProps) {
             </span>
           </div>
           <div className="bg-paper-raised p-2 sm:p-4">
-            <DailyMap digs={digs} pending={null} treasure={recap.treasure} disabled onDig={() => {}} />
+            <DailyMap
+              digs={digs}
+              pending={null}
+              treasure={recap.treasure}
+              disabled
+              onDig={() => {}}
+              selected={sealedGuess?.tile ?? null}
+            />
           </div>
           <div className="border-t-2 border-ink bg-paper-raised px-4 py-3">
             <TrailChips trail={digs.map((dig) => dig.temperature)} size="sm" />
+            {sealedGuess ? (
+              <p className="mt-2 text-xs leading-relaxed">
+                <span className="font-semibold">
+                  Sealed guess: {sectorName(sealedGuess.tile)} — {sealedGuess.right ? "right" : "wrong"}.
+                </span>{" "}
+                <span className="text-ink-soft">
+                  This tile was the one move nobody could watch. It was encrypted by the hunter,
+                  compared against a coordinate the contract could not read, and stayed unreadable
+                  to everyone including them until the map opened.
+                </span>
+              </p>
+            ) : null}
             <p className="mt-2 text-xs leading-relaxed text-ink-soft">
               Replayed from the trail this hunter left on chain. Their temperatures were sealed to
               their wallet all day and are readable now only because the map is open.
