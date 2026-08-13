@@ -7,6 +7,7 @@ import {
   UnreadGlyph,
 } from "@/components/marks/TemperatureGlyph";
 import { FIELD, TEMPERATURES, alreadyDug, type Dig, type Tile } from "@/lib/daily";
+import { footprintAt, type Footprint } from "@/lib/footprints";
 
 interface DailyMapProps {
   digs: Dig[];
@@ -20,6 +21,9 @@ interface DailyMapProps {
   // What a click means right now. Sealing re-opens the board after the six
   // digs are gone, so the last word is chosen on the same map as the rest.
   intent?: "dig" | "seal";
+  // Where rivals have dug. Their tiles are public; their answers are not, and
+  // this map draws exactly that difference.
+  footprints?: Footprint[];
 }
 
 const TILES: Tile[] = [];
@@ -35,6 +39,7 @@ export function DailyMap({
   onDig,
   selected = null,
   intent = "dig",
+  footprints = [],
 }: DailyMapProps) {
   const dugAt = new Map(digs.map((dig) => [`${dig.tile.x},${dig.tile.y}`, dig]));
 
@@ -53,6 +58,7 @@ export function DailyMap({
         const spent = alreadyDug(digs, tile);
         const locked = disabled || spent || isPending;
         const isSelected = selected?.x === tile.x && selected?.y === tile.y;
+        const rivals = dug ? null : footprintAt(footprints, tile);
 
         const style = dug && dug.temperature !== null ? TEMPERATURES[dug.temperature] : null;
 
@@ -70,7 +76,11 @@ export function DailyMap({
                 ? `Tile ${tile.x + 1}, ${tile.y + 1}: ${style?.label ?? "still arriving"}`
                 : intent === "seal"
                   ? `Name tile ${tile.x + 1}, ${tile.y + 1} as your sealed guess`
-                  : `Dig tile ${tile.x + 1}, ${tile.y + 1}`
+                  : rivals
+                    ? `Dig tile ${tile.x + 1}, ${tile.y + 1}. ${rivals.hunters} other ${
+                        rivals.hunters === 1 ? "hunter has" : "hunters have"
+                      } dug here; what it told them is unreadable.`
+                    : `Dig tile ${tile.x + 1}, ${tile.y + 1}`
             }
             aria-pressed={intent === "seal" ? isSelected : undefined}
             className={`tile relative aspect-square rounded-[6px] border-2 border-ink leading-none sm:rounded-lg ${
@@ -96,6 +106,16 @@ export function DailyMap({
                 ) : (
                   <TemperatureGlyph temperature={dug.temperature} className="size-[58%]" />
                 )}
+              </span>
+            ) : null}
+            {rivals ? (
+              // A rival's move, never a rival's answer: a mark on the tile and,
+              // where several have been, how many. No temperature can appear
+              // here, because nobody but its owner can read one.
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <span className="num text-[9px] font-semibold text-ink-ghost sm:text-[10px]">
+                  {rivals.hunters > 1 ? rivals.hunters : "·"}
+                </span>
               </span>
             ) : null}
             {isTreasure && !dug ? (

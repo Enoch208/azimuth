@@ -21,6 +21,7 @@ import { type Placing } from "@/lib/chain/daily-stats";
 import { shortenAddress } from "@/lib/chain/callsigns";
 import { describeFailure } from "@/lib/failure-copy";
 import { play, startListening } from "@/lib/sound";
+import { footprintsFrom, type RawDig } from "@/lib/footprints";
 import { recordKey } from "@/lib/use-player-record";
 import { shouldCelebrate } from "@/lib/victory";
 import {
@@ -50,9 +51,12 @@ interface DailyHuntScreenProps {
   day: number;
   hunters: number;
   yesterday: Placing[];
+  // Every dig on today's board, rivals included. Public chain data: the tile,
+  // never the answer.
+  digs: RawDig[];
 }
 
-export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProps) {
+export function DailyHuntScreen({ day, hunters, yesterday, digs: allDigs }: DailyHuntScreenProps) {
   const { address, isConnected, chainId } = useAccount();
   const { data: walletClient } = useWalletClient();
   const queryClient = useQueryClient();
@@ -183,6 +187,10 @@ export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProp
     },
     [client, loaded, pending, over, digs, address, day, queryClient, sealed, guessedTile, guessRight],
   );
+
+  // Rivals' moves, with the hunter's own removed so the board reads as "mine
+  // and theirs" rather than doubling up.
+  const footprints = useMemo(() => footprintsFrom(allDigs, address ?? null), [allDigs, address]);
 
   const offering = canSeal(digs, sealed);
 
@@ -326,8 +334,19 @@ export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProp
                 onDig={handleTile}
                 selected={offering ? aiming : null}
                 intent={offering ? "seal" : "dig"}
+                footprints={footprints}
               />
             </div>
+
+            {footprints.length > 0 ? (
+              <p className="border-t-2 border-ink bg-paper-deep px-4 py-2.5 text-xs leading-relaxed text-ink-soft">
+                <span className="num font-semibold text-ink">·</span> marks a tile another hunter
+                has already opened — {footprints.length}{" "}
+                {footprints.length === 1 ? "tile" : "tiles"} so far. You can watch every move
+                anyone makes. What those tiles told them is readable by nobody but them until
+                midnight.
+              </p>
+            ) : null}
 
             <div className="flex items-center gap-4 border-t-2 border-ink bg-paper-raised px-4 py-4">
               <KeeperMascot state={keeper} size="md" className="-my-3 -ml-1" />

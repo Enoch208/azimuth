@@ -66,7 +66,7 @@ async function dayWindow(day: number): Promise<{ from: bigint; to: bigint }> {
   return { from, to: to < from ? from : to };
 }
 
-async function dugOn(day: number) {
+export async function dugOn(day: number) {
   const event = getAbiItem({ abi: DAILY_ABI, name: "Dug" }) as AbiEvent;
   const { from, to } = await dayWindow(day);
 
