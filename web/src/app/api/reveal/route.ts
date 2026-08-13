@@ -55,7 +55,6 @@ async function sweep() {
     args: [BigInt(day)],
   });
   if (!info[3]) return Response.json({ day, skipped: "no hunt that day" });
-  if (info[4]) return Response.json({ day, skipped: "already revealed", trails: 0 });
 
   const wallet = createWalletClient({
     account,
@@ -63,13 +62,21 @@ async function sweep() {
     transport: http("https://sepolia.base.org"),
   });
 
-  const openHash = await serializeDrip(() =>
-    wallet.writeContract({ address: DAILY_ADDRESS, abi: DAILY_ABI, functionName: "revealDay", args: [BigInt(day)] }),
-  );
-  await publicClient.waitForTransactionReceipt({ hash: openHash });
+  // Opening the map and revealing the trails are separate transactions, so a
+  // run that times out half way leaves the treasure public and some trails
+  // still sealed. Returning early on an already-open day would strand those
+  // trails forever — the sweep has to fall through and retry them instead.
+  // revealDay is what is idempotent here; the trail loop is simply repeatable.
+  if (!info[4]) {
+    const openHash = await serializeDrip(() =>
+      wallet.writeContract({ address: DAILY_ADDRESS, abi: DAILY_ABI, functionName: "revealDay", args: [BigInt(day)] }),
+    );
+    await publicClient.waitForTransactionReceipt({ hash: openHash });
+  }
 
   const hunters = await huntersOn(day);
   const revealed: string[] = [];
+  const failed: string[] = [];
   for (const hunter of hunters) {
     try {
       const hash = await serializeDrip(() =>
@@ -83,11 +90,19 @@ async function sweep() {
       await publicClient.waitForTransactionReceipt({ hash });
       revealed.push(hunter);
     } catch {
-      continue;
+      failed.push(hunter);
     }
   }
 
-  return Response.json({ day, opened: true, trails: revealed.length, hunters: hunters.length });
+  // Reported so a failed sweep is visible in the cron log rather than silent.
+  return Response.json({
+    day,
+    opened: true,
+    reopened: !info[4],
+    trails: revealed.length,
+    failed: failed.length,
+    hunters: hunters.length,
+  });
 }
 
 export async function POST() {
