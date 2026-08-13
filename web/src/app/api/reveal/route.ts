@@ -3,6 +3,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
 import { DAILY_ABI } from "@/lib/chain/daily-abi";
 import { DAILY_ADDRESS, publicClient } from "@/lib/chain/config";
+import { getLightning } from "@/lib/chain/inco";
 import { dugOn } from "@/lib/chain/recap";
 import { serializeDrip } from "@/lib/drip-guard";
 
@@ -16,12 +17,35 @@ function keeper() {
   return key ? privateKeyToAccount(key as Hex, { nonceManager }) : null;
 }
 
-// Which hunters dug that day. Shares the recap's bracketed day window rather
-// than walking a fixed 48 hour lookback in sequence: the old version issued
-// roughly 46 sequential getLogs calls before the first transaction was sent.
-async function huntersOn(day: number): Promise<string[]> {
+// Which hunters dug that day, and one ciphertext handle each. Shares the
+// recap's bracketed day window rather than walking a fixed 48 hour lookback in
+// sequence: the old version issued roughly 46 sequential getLogs calls before
+// the first transaction was sent.
+async function huntersOn(day: number): Promise<{ hunter: string; handle: Hex }[]> {
   const rows = await dugOn(day);
-  return [...new Set(rows.map((row) => row.hunter))];
+  const first = new Map<string, Hex>();
+  for (const row of rows) {
+    if (!first.has(row.hunter)) first.set(row.hunter, row.handle);
+  }
+  return [...first.entries()].map(([hunter, handle]) => ({ hunter, handle }));
+}
+
+// The contract keeps no per-trail record of having been revealed, so a retry
+// would re-send every trail and spend the fee float again on work already done.
+// A trail that is already public can be read by anyone, including this server —
+// so ask, and skip the ones that answer.
+//
+// Fail-safe by construction: anything other than a clean read is treated as
+// still sealed, and gets revealed. The cost of a wrong guess here is one
+// duplicate transaction, never a trail left shut.
+async function alreadyOpen(handle: Hex): Promise<boolean> {
+  try {
+    const lightning = await getLightning();
+    await lightning.attestedReveal([handle]);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Opens yesterday's map. Until this runs the treasure and every trail stay
@@ -63,8 +87,13 @@ async function sweep() {
 
   const hunters = await huntersOn(day);
   const revealed: string[] = [];
+  const skipped: string[] = [];
   const failed: string[] = [];
-  for (const hunter of hunters) {
+  for (const { hunter, handle } of hunters) {
+    if (await alreadyOpen(handle)) {
+      skipped.push(hunter);
+      continue;
+    }
     try {
       const hash = await serializeDrip(() =>
         wallet.writeContract({
@@ -89,6 +118,7 @@ async function sweep() {
     opened: true,
     reopened: !info[4],
     trails: revealed.length,
+    alreadyOpen: skipped.length,
     failed: failed.length,
     hunters: hunters.length,
   };

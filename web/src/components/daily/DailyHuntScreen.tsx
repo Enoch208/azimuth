@@ -29,6 +29,8 @@ import {
   DIGS,
   TEMPERATURES,
   alreadyDug,
+  anyUnread,
+  canDig,
   canSeal,
   huntNumber,
   isOver,
@@ -158,7 +160,7 @@ export function DailyHuntScreen({ day, hunters, yesterday, digs: allDigs }: Dail
 
   const handleDig = useCallback(
     async (tile: Tile) => {
-      if (!client || !loaded || pending || over || alreadyDug(digs, tile)) return;
+      if (!client || !loaded || pending || !canDig(digs) || alreadyDug(digs, tile)) return;
       const first = digs.length === 0;
       setPending(tile);
       setBoard({ for: client, digs, loaded: true, failure: null, sealed, guessedTile, guessRight });
@@ -197,7 +199,7 @@ export function DailyHuntScreen({ day, hunters, yesterday, digs: allDigs }: Dail
         setPending(null);
       }
     },
-    [client, loaded, pending, over, digs, address, day, queryClient, sealed, guessedTile, guessRight],
+    [client, loaded, pending, digs, address, day, queryClient, sealed, guessedTile, guessRight],
   );
 
   // Rivals' moves, with the hunter's own removed so the board reads as "mine
@@ -218,6 +220,32 @@ export function DailyHuntScreen({ day, hunters, yesterday, digs: allDigs }: Dail
     },
     [offering, handleDig],
   );
+
+  const waiting = anyUnread(digs);
+
+  // The dig is on chain and spent either way. Asking again is free, and it is
+  // the only thing standing between the hunter and the rest of their hunt.
+  const [rereading, setRereading] = useState(false);
+  const reread = useCallback(async () => {
+    if (!client || rereading) return;
+    setRereading(true);
+    try {
+      const snapshot = await client.load();
+      setBoard({
+        for: client,
+        digs: snapshot.digs,
+        loaded: true,
+        failure: null,
+        sealed: snapshot.sealed,
+        guessedTile: snapshot.guessedTile,
+        guessRight: snapshot.guessRight,
+      });
+    } catch {
+      // the board already says the answer has not arrived; leave it saying so
+    } finally {
+      setRereading(false);
+    }
+  }, [client, rereading]);
 
   const handleSeal = useCallback(async () => {
     if (!client || !aiming || sealing) return;
@@ -342,7 +370,9 @@ export function DailyHuntScreen({ day, hunters, yesterday, digs: allDigs }: Dail
                 digs={digs}
                 pending={pending}
                 treasure={null}
-                disabled={!ready || !loaded || pending !== null || (over && !offering) || sealing}
+                disabled={
+                  !ready || !loaded || pending !== null || sealing || (!canDig(digs) && !offering)
+                }
                 onDig={handleTile}
                 selected={offering ? aiming : null}
                 intent={offering ? "seal" : "dig"}
@@ -388,6 +418,27 @@ export function DailyHuntScreen({ day, hunters, yesterday, digs: allDigs }: Dail
         </div>
 
         <div className="flex flex-col gap-5">
+          {waiting && !pending ? (
+            <section className="rounded-card border-2 border-ink bg-paper-raised p-5 shadow-hard-sm">
+              <h2 className="text-[10px] font-semibold uppercase tracking-[0.18em]">
+                One answer has not arrived
+              </h2>
+              <p className="mt-3 text-sm text-ink-soft">
+                Your dig is on chain and it counted. The Keeper has not finished signing what it
+                found, so the board is held until it does — that answer could be the treasure, and
+                digging past it would waste the rest of your hunt.
+              </p>
+              <button
+                type="button"
+                disabled={rereading}
+                onClick={reread}
+                className="mt-4 w-full rounded-chip border-2 border-ink bg-ink px-4 py-2.5 text-sm font-semibold text-paper shadow-hard-xs disabled:opacity-40"
+              >
+                {rereading ? "Listening…" : "Ask again"}
+              </button>
+            </section>
+          ) : null}
+
           <GetTestEth />
 
           {offering || sealed ? (

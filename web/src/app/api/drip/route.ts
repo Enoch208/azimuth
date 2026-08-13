@@ -5,7 +5,12 @@ import { publicClient } from "@/lib/chain/config";
 import { checkDripAllowance, clientKey, recordDrip, serializeDrip } from "@/lib/drip-guard";
 
 const DRIP_WEI = BigInt(process.env.DRIP_WEI ?? "60000000000000");
-const RESERVE_WEI = parseEther("0.0002");
+// The faucet and the keeper spend the same wallet, so a drained faucet is a
+// missed rollover — the one failure that would leave a day sealed for good.
+// A full sweep costs roughly 0.00002 ETH in gas, so this reserve is about a
+// thousand rollovers deep and the faucet refuses long before the keeper is at
+// risk. Refusing a drip is recoverable; a map that never opens is not.
+const RESERVE_WEI = parseEther("0.02");
 
 function faucetAccount() {
   const key = process.env.DEPLOYER_PRIVATE_KEY;

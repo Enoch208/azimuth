@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canDig,
   canSeal,
   tileFromIndex,
   tileIndex,
@@ -175,5 +176,35 @@ describe("who is offered a last word", () => {
 
   it("does not offer a second one", () => {
     expect(canSeal(spent, true)).toBe(false);
+  });
+});
+
+describe("an unread answer holds the board", () => {
+  const read = (x: number, y: number): Dig => ({ tile: { x, y }, temperature: 4 });
+  const unread = (x: number, y: number): Dig => ({ tile: { x, y }, temperature: null });
+
+  it("allows a dig when every answer so far has arrived", () => {
+    expect(canDig([read(0, 0), read(1, 1)])).toBe(true);
+  });
+
+  // The unread answer may be FOUND. Spending the rest of a hunt looking for a
+  // treasure already under your feet is the worst thing this board can do.
+  it("refuses a dig while an earlier answer is still unread", () => {
+    expect(canDig([read(0, 0), unread(1, 1)])).toBe(false);
+  });
+
+  it("refuses a dig once the hunt is over", () => {
+    expect(canDig([{ tile: { x: 2, y: 2 }, temperature: 0 }])).toBe(false);
+    expect(canDig([read(0, 0), read(1, 0), read(2, 0), read(3, 0), read(4, 0), read(5, 0)])).toBe(false);
+  });
+
+  it("allows the first dig of the day", () => {
+    expect(canDig([])).toBe(true);
+  });
+
+  it("does not offer a sealed guess until every answer has been read", () => {
+    const five = [read(0, 0), read(1, 0), read(2, 0), read(3, 0), read(4, 0)];
+    expect(canSeal([...five, unread(5, 0)], false)).toBe(false);
+    expect(canSeal([...five, read(5, 0)], false)).toBe(true);
   });
 });

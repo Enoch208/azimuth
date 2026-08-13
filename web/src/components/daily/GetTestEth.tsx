@@ -21,8 +21,14 @@ interface Checked {
 export function GetTestEth() {
   const { address, isConnected } = useAccount();
   const [checked, setChecked] = useState<Checked | null>(null);
-  const [state, setState] = useState<State>("offer");
-  const [problem, setProblem] = useState<string | null>(null);
+  // Keyed to the wallet it describes, like the balance above it. Otherwise a
+  // drip sent to one wallet leaves "Sent" on screen after switching to another
+  // that has received nothing.
+  const [progress, setProgress] = useState<{ for: string; state: State; problem: string | null }>({
+    for: "",
+    state: "offer",
+    problem: null,
+  });
 
   useEffect(() => {
     if (!isConnected || !address) return;
@@ -41,11 +47,13 @@ export function GetTestEth() {
   }, [address, isConnected]);
 
   const known = address && checked?.for === address ? checked : null;
+  const mine = address && progress.for === address ? progress : null;
+  const state: State = mine?.state ?? "offer";
+  const problem = mine?.problem ?? null;
 
   const drip = useCallback(async () => {
     if (!address) return;
-    setState("sending");
-    setProblem(null);
+    setProgress({ for: address, state: "sending", problem: null });
     try {
       const response = await fetch("/api/drip", {
         method: "POST",
@@ -54,10 +62,13 @@ export function GetTestEth() {
       });
       const body = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(body.error ?? "The faucet turned that down");
-      setState("sent");
+      setProgress({ for: address, state: "sent", problem: null });
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
-      setState("failed");
+      setProgress({
+        for: address,
+        state: "failed",
+        problem: error instanceof Error ? error.message : String(error),
+      });
     }
   }, [address]);
 

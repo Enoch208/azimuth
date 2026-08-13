@@ -78,11 +78,19 @@ export interface Guess {
   right: boolean | null;
 }
 
+// A dig is refused while an earlier answer has not come back. That answer may
+// be FOUND, and letting a hunter spend the rest of their allowance looking for
+// a treasure already under their feet is the worst thing this board can do.
+export function canDig(digs: Dig[]): boolean {
+  return !isOver(digs) && !anyUnread(digs);
+}
+
 // The last word is offered only to a hunter who spent all six digs and never
-// turned the treasure up. Finding it by digging ends the hunt on its own, and
-// the contract allows only one guess a day.
+// turned the treasure up. Finding it by digging ends the hunt on its own, the
+// contract allows only one guess a day, and an unread answer means the hunter
+// does not yet know whether they missed at all.
 export function canSeal(digs: Dig[], guessed: boolean): boolean {
-  return !guessed && digs.length >= DIGS && !isFound(digs);
+  return !guessed && digs.length >= DIGS && !isFound(digs) && !anyUnread(digs);
 }
 
 // The first day the contract now deployed could run. Hunt numbering is relative
