@@ -55,16 +55,18 @@ export function DailyHuntScreen({ day, hunters, yesterday }: DailyHuntScreenProp
   const { data: walletClient } = useWalletClient();
   const queryClient = useQueryClient();
 
+  const [phase, setPhase] = useState<DigPhase>("idle");
+  const [pending, setPending] = useState<Tile | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
   const ready = isConnected && chainId === baseSepolia.id && !!walletClient && !!address;
 
+  // Declared after the state it captures: the memo factory runs during this
+  // render, so reading setPhase from above would hit its temporal dead zone.
   const client = useMemo(
     () => (ready ? new DailyClient(day, walletClient, address, setPhase) : null),
     [ready, day, walletClient, address],
   );
-
-  const [phase, setPhase] = useState<DigPhase>("idle");
-  const [pending, setPending] = useState<Tile | null>(null);
-  const [dismissed, setDismissed] = useState(false);
 
   // The board is stored against the client that produced it and compared during
   // render, rather than cleared from an effect. Switching wallets then shows an
