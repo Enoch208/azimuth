@@ -10,8 +10,22 @@ jobs:
   reveal:
     runs-on: ubuntu-latest
     steps:
+      # The sweep is idempotent: revealDay runs once, the trails retry. Calling
+      # it twice costs nothing and finishes a pass that was cut short, so a slow
+      # covalidator cannot leave yesterday half open until tomorrow.
       - name: Open yesterday's map
         run: |
+          for attempt in 1 2 3; do
+            echo "attempt $attempt"
+            curl -sS --fail-with-body \
+              -H "authorization: Bearer ${{ secrets.KEEPER_SECRET }}" \
+              "${{ vars.REVEAL_URL }}" && break
+            sleep 30
+          done
+
+      - name: Confirm every trail opened
+        run: |
+          sleep 20
           curl -sS --fail-with-body \
             -H "authorization: Bearer ${{ secrets.KEEPER_SECRET }}" \
             "${{ vars.REVEAL_URL }}"

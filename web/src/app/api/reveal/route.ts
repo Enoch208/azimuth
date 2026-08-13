@@ -1,40 +1,27 @@
-import { createWalletClient, http, nonceManager, getAbiItem, type AbiEvent, type Hex } from "viem";
+import { createWalletClient, http, nonceManager, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
 import { DAILY_ABI } from "@/lib/chain/daily-abi";
 import { DAILY_ADDRESS, publicClient } from "@/lib/chain/config";
+import { dugOn } from "@/lib/chain/recap";
 import { serializeDrip } from "@/lib/drip-guard";
 
-const MAX_RANGE = BigInt(1900);
+// Opening a full day is one reveal plus one transaction per hunter, each waited
+// on. Six hunters is comfortably past the platform default, and a sweep cut off
+// half way is the one failure this endpoint exists to avoid.
+export const maxDuration = 300;
 
 function keeper() {
   const key = process.env.DEPLOYER_PRIVATE_KEY;
   return key ? privateKeyToAccount(key as Hex, { nonceManager }) : null;
 }
 
+// Which hunters dug that day. Shares the recap's bracketed day window rather
+// than walking a fixed 48 hour lookback in sequence: the old version issued
+// roughly 46 sequential getLogs calls before the first transaction was sent.
 async function huntersOn(day: number): Promise<string[]> {
-  const event = getAbiItem({ abi: DAILY_ABI, name: "Dug" }) as AbiEvent;
-  const latest = await publicClient.getBlockNumber();
-  const lookback = BigInt(86_400);
-  let from = latest > lookback ? latest - lookback : BigInt(0);
-
-  const seen = new Set<string>();
-  while (from <= latest) {
-    const to = from + MAX_RANGE > latest ? latest : from + MAX_RANGE;
-    const logs = await publicClient.getLogs({
-      address: DAILY_ADDRESS,
-      event,
-      args: { day: BigInt(day) },
-      fromBlock: from,
-      toBlock: to,
-    });
-    for (const log of logs) {
-      const args = log.args as unknown as { hunter: string };
-      seen.add(args.hunter);
-    }
-    from = to + BigInt(1);
-  }
-  return [...seen];
+  const rows = await dugOn(day);
+  return [...new Set(rows.map((row) => row.hunter))];
 }
 
 // Opens yesterday's map. Until this runs the treasure and every trail stay
