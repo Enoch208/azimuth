@@ -78,6 +78,30 @@ export function RecapScreen({ recap, today }: RecapScreenProps) {
     return () => window.clearTimeout(timer);
   }, [trail, step]);
 
+  // Open on chain but not yet readable. Distinct from sealed, and worth saying
+  // plainly — the day did roll over, the reading just has not landed.
+  if (recap.revealed && !recap.readable) {
+    return (
+      <div className="mx-auto max-w-3xl px-5 py-16 text-center sm:px-8">
+        <KeeperMascot state="searching" size="lg" className="mx-auto" />
+        <h1 className="mt-6 font-display text-4xl font-medium tracking-tight">
+          The map is open. The reading is not.
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+          Yesterday&apos;s map was unsealed on chain, but the network has not handed back the
+          decrypted coordinates yet. Nothing is lost — the day is public and this page will fill in
+          as soon as the reading arrives.
+        </p>
+        <Link
+          href="/app"
+          className="press mt-6 inline-flex min-h-11 items-center rounded-chip border-2 border-ink bg-amber px-6 text-sm font-semibold uppercase tracking-[0.12em] shadow-hard-xs"
+        >
+          Play today&apos;s hunt
+        </Link>
+      </div>
+    );
+  }
+
   if (!recap.revealed || !recap.treasure) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16 text-center sm:px-8">
@@ -86,8 +110,9 @@ export function RecapScreen({ recap, today }: RecapScreenProps) {
           The map is still sealed
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-          Yesterday&apos;s treasure and every hunter&apos;s trail open shortly after midnight UTC.
-          Until then nobody can read them, which is the point.
+          Yesterday&apos;s treasure and every hunter&apos;s trail open after midnight UTC. Until
+          then nobody can read them, which is the point. If they should already be open, the
+          reading is still arriving — try again in a moment.
         </p>
         <Link
           href="/app"

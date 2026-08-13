@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ConnectButton } from "@/components/ConnectButton";
 import { AzimuthMark } from "@/components/marks/AzimuthMark";
 
@@ -17,15 +18,22 @@ export function SiteHeader() {
         </a>
 
         <nav className="hidden items-center gap-8 md:flex">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="inline-flex min-h-11 items-center text-sm text-ink-soft underline-offset-4 transition-colors hover:text-ink hover:underline"
-            >
-              {link.label}
-            </a>
-          ))}
+          {NAV_LINKS.map((link) => {
+            const className =
+              "inline-flex min-h-11 items-center text-sm text-ink-soft underline-offset-4 transition-colors hover:text-ink hover:underline";
+            if (link.href.startsWith("#")) {
+              return (
+                <a key={link.href} href={link.href} className={className}>
+                  {link.label}
+                </a>
+              );
+            }
+            return (
+              <Link key={link.href} href={link.href} className={className}>
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <ConnectButton />

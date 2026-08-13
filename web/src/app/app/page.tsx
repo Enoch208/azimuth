@@ -1,9 +1,9 @@
 import { DailyHuntScreen } from "@/components/daily/DailyHuntScreen";
-import { currentDay } from "@/lib/chain/daily-client";
+import { getToday } from "@/lib/chain/cached-reads";
 
 export const revalidate = 30;
 
 export default async function TodaysHuntPage() {
-  const day = await currentDay();
+  const day = await getToday();
   return <DailyHuntScreen day={day} />;
 }

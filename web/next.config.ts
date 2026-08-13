@@ -12,6 +12,9 @@ const OPTIONAL_WAGMI_MODULES = [
 const stub = "./src/lib/chain/optional-module-stub.ts";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    optimizePackageImports: ["wagmi", "viem", "@reown/appkit", "@reown/appkit/react"],
+  },
   turbopack: {
     resolveAlias: Object.fromEntries(
       OPTIONAL_WAGMI_MODULES.map((specifier) => [specifier, stub]),

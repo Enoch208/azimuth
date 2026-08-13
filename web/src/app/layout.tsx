@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Unbounded, Space_Grotesk } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
 import { PaperGrain } from "@/components/marks/PaperGrain";
 import { AppProviders } from "@/components/providers/AppProviders";
 import { CallsignPrompt } from "@/components/CallsignPrompt";
@@ -8,14 +9,14 @@ import "./globals.css";
 const unbounded = Unbounded({
   variable: "--font-unbounded",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
+  weight: ["300", "500"],
   display: "swap",
 });
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${unbounded.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-paper text-ink">
+        <NextTopLoader color="#e5a00d" height={3} showSpinner={false} shadow={false} zIndex={200} />
         <AppProviders>
           <CallsignPrompt />
           {children}

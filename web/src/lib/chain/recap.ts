@@ -16,7 +16,13 @@ export interface RecapTrail {
 
 export interface Recap {
   day: number;
+  // The contract has opened the map: revealDay ran and the treasure is public.
   revealed: boolean;
+  // The plaintext actually came back. These differ when the map is open on
+  // chain but the covalidator will not yet serve the decryption — a real state
+  // that used to be reported as "still sealed", which told the player the
+  // opposite of the truth.
+  readable: boolean;
   treasure: Tile | null;
   trails: RecapTrail[];
 }
@@ -83,10 +89,17 @@ async function dugOn(day: number) {
 // public, and no further digs can land on it. Re-decrypting all of that on
 // every request was most of the minute the page used to take.
 const opened = new Map<number, Recap>();
+const unreadUntil = new Map<number, number>();
+const UNREAD_MS = 45_000;
 
 export async function loadRecap(day: number): Promise<Recap> {
   const cached = opened.get(day);
   if (cached) return cached;
+  // Backoff is only ever entered after an opened day failed to decrypt, so the
+  // map is known to be open here — it just cannot be read yet.
+  if ((unreadUntil.get(day) ?? 0) > Date.now()) {
+    return { day, revealed: true, readable: false, treasure: null, trails: [] };
+  }
 
   const info = await publicClient.readContract({
     address: DAILY_ADDRESS,
@@ -96,7 +109,7 @@ export async function loadRecap(day: number): Promise<Recap> {
   });
 
   if (!info[3] || !info[4]) {
-    return { day, revealed: false, treasure: null, trails: [] };
+    return { day, revealed: false, readable: false, treasure: null, trails: [] };
   }
 
   const [handles, rows] = await Promise.all([
@@ -110,8 +123,16 @@ export async function loadRecap(day: number): Promise<Recap> {
   ]);
 
   const lightning = await getLightning();
-  const [x, y] = await lightning.attestedReveal([handles[0], handles[1]]);
-  const treasure = { x: Number(x.plaintext.value), y: Number(y.plaintext.value) };
+  let treasure: Tile;
+  try {
+    const [x, y] = await lightning.attestedReveal([handles[0], handles[1]]);
+    treasure = { x: Number(x.plaintext.value), y: Number(y.plaintext.value) };
+  } catch {
+    // The map is open on chain; the covalidator will not serve the plaintext
+    // yet. Reporting "sealed" here would tell the player the day never opened.
+    unreadUntil.set(day, Date.now() + UNREAD_MS);
+    return { day, revealed: true, readable: false, treasure: null, trails: [] };
+  }
 
   // Once the day is open every trail is public, so one batch covers the board.
   const temperatures = new Map<string, Temperature>();
@@ -146,7 +167,7 @@ export async function loadRecap(day: number): Promise<Recap> {
     return a.digs.length - b.digs.length;
   });
 
-  const recap: Recap = { day, revealed: true, treasure, trails };
+  const recap: Recap = { day, revealed: true, readable: true, treasure, trails };
   // Only a fully-read day is worth keeping. A trail whose temperatures have not
   // been revealed yet would otherwise be cached with holes in it forever.
   if (trails.every((trail) => trail.digs.every((dig) => dig.temperature !== null))) {
