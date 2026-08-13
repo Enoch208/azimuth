@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ConnectButton } from "@/components/ConnectButton";
 import { AzimuthMark } from "@/components/marks/AzimuthMark";
+import { StreakBadge } from "@/components/app/StreakBadge";
 import { BearingIcon, CrosshairIcon, HuntersIcon, SealIcon } from "@/components/marks/Icons";
 
 const DESTINATIONS = [
@@ -19,7 +20,7 @@ function isActive(pathname: string, href: string, exact: boolean): boolean {
   return pathname.startsWith(href);
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, today }: { children: ReactNode; today: number }) {
   const pathname = usePathname();
   return (
     <div className="min-h-screen lg:grid lg:h-screen lg:grid-cols-[15rem_minmax(0,1fr)] lg:overflow-hidden">
@@ -31,6 +32,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <ConnectButton className="w-full" />
+
+          <StreakBadge today={today} className="self-start -mt-2" />
 
           <nav className="flex flex-col gap-1.5 border-t-2 border-paper-sunk pt-6">
             {DESTINATIONS.map((item) => {
@@ -60,7 +63,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <AzimuthMark className="size-5 text-ink" />
             <span className="font-display text-xs font-medium tracking-[0.24em]">AZIMUTH</span>
           </Link>
-          <ConnectButton />
+          <div className="flex items-center gap-2">
+            <StreakBadge today={today} />
+            <ConnectButton />
+          </div>
         </header>
 
         <main className="flex-1 pb-24 lg:pb-0">{children}</main>

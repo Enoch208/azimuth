@@ -5,7 +5,7 @@ import { getToday } from "@/lib/chain/cached-reads";
 export default async function AppLayout({ children }: LayoutProps<"/app">) {
   const today = await getToday();
   return (
-    <AppShell>
+    <AppShell today={today}>
       <StreakGreeting today={today} />
       {children}
     </AppShell>
