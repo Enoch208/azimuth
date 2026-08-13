@@ -371,6 +371,23 @@
     background: var(--color-amber);
     color: var(--color-ink);
   }
+
+  /* Preflight resets buttons to cursor: default, so every button in the app
+     was showing an arrow. Anything you can actually press says so, and
+     anything spent — a dug tile, a disabled claim — goes back to the arrow
+     rather than the barred circle, which reads as an error rather than as
+     done. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label:has(> input[type="checkbox"]),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: default;
+  }
 }
 
 @utility grid-field {
