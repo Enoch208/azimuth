@@ -1,5 +1,6 @@
 "use client";
 
+import { play } from "@/lib/sound";
 import {
   FoundGlyph,
   TemperatureGlyph,
@@ -45,7 +46,10 @@ export function DailyMap({ digs, pending, treasure, disabled, onDig }: DailyMapP
             key={key}
             type="button"
             disabled={locked}
-            onClick={() => onDig(tile)}
+            onClick={() => {
+              play("press");
+              onDig(tile);
+            }}
             aria-label={
               dug
                 ? `Tile ${tile.x + 1}, ${tile.y + 1}: ${style?.label ?? "still arriving"}`

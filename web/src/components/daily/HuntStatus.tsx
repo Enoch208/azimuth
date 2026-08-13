@@ -1,6 +1,7 @@
 "use client";
 
 import { RevealCountdown } from "@/components/daily/RevealCountdown";
+import { SoundToggle } from "@/components/daily/SoundToggle";
 import { KeeperMascot } from "@/components/mascot/KeeperMascot";
 import { keeperStateFor } from "@/components/mascot/keeper-state";
 import { LockIcon } from "@/components/marks/Icons";
@@ -43,8 +44,11 @@ export function HuntStatus({ day, digs, pending, hunters }: HuntStatusProps) {
       <div className="flex items-center gap-3">
         <KeeperMascot state={keeper} size="sm" className="-my-2 w-14 shrink-0" />
         <div className="min-w-0 flex-1">
-          <h2 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-faint">
+          <h2 className="flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-faint">
             Azimuth #{huntNumber(day)}
+            <span className="hidden lg:inline-flex">
+              <SoundToggle />
+            </span>
           </h2>
           <p className="num truncate text-sm font-semibold">
             {address ? HUNT_STATE_LABEL[state] : "Not started"}

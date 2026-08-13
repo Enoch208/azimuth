@@ -6,6 +6,7 @@ import { useAccount, useWalletClient } from "wagmi";
 import { DailyMap } from "@/components/daily/DailyMap";
 import { DigResult } from "@/components/daily/DigResult";
 import { HuntStatus } from "@/components/daily/HuntStatus";
+import { SoundToggle } from "@/components/daily/SoundToggle";
 import { RevealCountdown } from "@/components/daily/RevealCountdown";
 import { VictoryOverlay } from "@/components/daily/VictoryOverlay";
 import { ConnectButton } from "@/components/ConnectButton";
@@ -17,6 +18,7 @@ import { DailyClient, type DigPhase } from "@/lib/chain/daily-client";
 import { loadDayStats, loadPlacings, type DayStats, type Placing } from "@/lib/chain/daily-stats";
 import { shortenAddress } from "@/lib/chain/callsigns";
 import { describeFailure } from "@/lib/failure-copy";
+import { play } from "@/lib/sound";
 import { shouldCelebrate } from "@/lib/victory";
 import {
   DIGS,
@@ -106,6 +108,9 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
       try {
         const snapshot = await client.dig(tile);
         setDigs(snapshot.digs);
+        // The answer landing is the moment worth hearing.
+        const answer = snapshot.digs[snapshot.digs.length - 1]?.temperature ?? null;
+        play(answer === 0 ? "found" : answer !== null && answer <= 1 ? "burning" : "reveal");
       } catch (error) {
         setFailure(error instanceof Error ? error.message : String(error));
       } finally {
@@ -183,6 +188,7 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
           <span className="rounded-chip border-2 border-ink bg-ink px-3 py-1.5 text-paper">
             <RevealCountdown />
           </span>
+          <SoundToggle />
         </div>
       </div>
 
