@@ -96,6 +96,19 @@ export function play(cue: Cue): void {
   });
 }
 
+// The wait for a confidential answer runs eight to eleven seconds, which is a
+// long time to sit in silence wondering whether anything is happening. A quiet
+// tick every so often says the Keeper is still listening — slow enough to read
+// as patience rather than as a progress bar. Returns a stop function.
+const LISTEN_EVERY_MS = 1_600;
+
+export function startListening(): () => void {
+  if (!soundEnabled() || typeof window === "undefined") return () => {};
+  play("listen");
+  const id = window.setInterval(() => play("listen"), LISTEN_EVERY_MS);
+  return () => window.clearInterval(id);
+}
+
 // Warm the cues a hunt will need, so the first dig is not the one that waits
 // on a fetch. Called from a gesture, after sound is switched on.
 export function warmSound(): void {

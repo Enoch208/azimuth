@@ -18,7 +18,7 @@ import { DailyClient, type DigPhase } from "@/lib/chain/daily-client";
 import { loadDayStats, loadPlacings, type DayStats, type Placing } from "@/lib/chain/daily-stats";
 import { shortenAddress } from "@/lib/chain/callsigns";
 import { describeFailure } from "@/lib/failure-copy";
-import { play } from "@/lib/sound";
+import { play, startListening } from "@/lib/sound";
 import { shouldCelebrate } from "@/lib/victory";
 import {
   DIGS,
@@ -95,6 +95,12 @@ export function DailyHuntScreen({ day }: DailyHuntScreenProps) {
       live = false;
     };
   }, [client, day]);
+
+  // The Keeper is audibly listening for as long as the answer is in flight.
+  useEffect(() => {
+    if (pending === null) return;
+    return startListening();
+  }, [pending]);
 
   const over = isOver(digs);
   const latest = digs[digs.length - 1];
