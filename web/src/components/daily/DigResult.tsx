@@ -43,7 +43,7 @@ export function DigResult({ day, digs }: DigResultProps) {
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(shareText(day, digs));
+      await navigator.clipboard.writeText(shareText(day, digs, callsign));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2200);
     } catch {

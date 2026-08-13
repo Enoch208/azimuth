@@ -110,13 +110,26 @@ export function huntNumber(day: number): number {
 // A shared result must never give away where the treasure is, or the first
 // person to post their grid ends the day for everyone. Temperatures alone say
 // how the hunt went without saying where anything was.
-export function shareText(day: number, digs: Dig[]): string {
+export const SITE_URL = "https://azimuth-inco.vercel.app";
+
+export function shareText(day: number, digs: Dig[], callsign: string | null = null): string {
   const found = isFound(digs);
   const score = found ? `${digs.length}/${DIGS}` : `X/${DIGS}`;
   const trail = digs
     .map((dig) => (dig.temperature === null ? "⬛" : TEMPERATURES[dig.temperature].share))
     .join("");
-  return `AZIMUTH #${huntNumber(day)} ${score}\n${trail}\n\nThe chain knows. You don't.`;
+
+  // The first line is the same shape for everybody — it is the part people
+  // compare, and a hunter's own name must not change how their result reads.
+  const who = callsign ? `Hunted by ${callsign}. ` : "";
+  return [
+    `AZIMUTH #${huntNumber(day)} ${score}`,
+    trail,
+    "",
+    `${who}The chain knows. You don't.`,
+    "Confidential onchain treasure hunt, powered by Inco.",
+    SITE_URL,
+  ].join("\n");
 }
 
 // Tiles read as a chess-style reference so a treasure can be named out loud.

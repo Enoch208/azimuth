@@ -314,11 +314,18 @@ export async function renderResultCard(card: ResultCard): Promise<Blob> {
     });
   }
 
-  // Footer.
+  // Footer. Two lines: the game's own line, and what makes it possible — a
+  // card is the only part of AZIMUTH a stranger sees, so the confidentiality
+  // it is bragging about should be attributed on it.
   ctx.fillStyle = INK_FAINT;
   ctx.font = `500 26px ${sans}`;
   ctx.letterSpacing = "3px";
-  ctx.fillText("THE CHAIN KNOWS. YOU DON'T.", CARD_WIDTH / 2, panel.y + panel.h - 52);
+  ctx.fillText("THE CHAIN KNOWS. YOU DON'T.", CARD_WIDTH / 2, panel.y + panel.h - 86);
+
+  ctx.fillStyle = TEAL;
+  ctx.font = `700 22px ${sans}`;
+  ctx.letterSpacing = "4px";
+  ctx.fillText("POWERED BY INCO ON BASE", CARD_WIDTH / 2, panel.y + panel.h - 44);
   ctx.letterSpacing = "0px";
   ctx.textAlign = "left";
 

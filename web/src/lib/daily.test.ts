@@ -208,3 +208,44 @@ describe("an unread answer holds the board", () => {
     expect(canSeal([...five, read(5, 0)], false)).toBe(true);
   });
 });
+
+describe("a shared result carries who hunted and what powers it", () => {
+  const played: Dig[] = [
+    { tile: { x: 3, y: 3 }, temperature: 4 },
+    { tile: { x: 7, y: 2 }, temperature: 2 },
+  ];
+
+  it("names the hunter when they have claimed a callsign", () => {
+    expect(shareText(20_800, played, "enochox2")).toContain("enochox2");
+  });
+
+  it("credits Inco and links the game", () => {
+    const text = shareText(20_800, played, "enochox2");
+    expect(text).toMatch(/Inco/);
+    expect(text).toContain("azimuth-inco.vercel.app");
+  });
+
+  it("says nothing about a hunter who has no callsign", () => {
+    const text = shareText(20_800, played, null);
+    expect(text).not.toMatch(/hunted by/i);
+    expect(text).toMatch(/Inco/);
+  });
+
+  it("keeps the score line identical however the hunt went", () => {
+    const other: Dig[] = [
+      { tile: { x: 0, y: 9 }, temperature: 5 },
+      { tile: { x: 4, y: 4 }, temperature: 1 },
+    ];
+    expect(shareText(20_800, played, "aaa").split("\n")[0]).toBe(
+      shareText(20_800, other, "bbb").split("\n")[0],
+    );
+  });
+
+  it("still gives away no coordinate once a name and a link are on it", () => {
+    const text = shareText(20_800, played, "enochox2");
+    for (const entry of played) {
+      expect(text).not.toContain(`${entry.tile.x},${entry.tile.y}`);
+    }
+    expect(text).not.toMatch(/\b(?:10|[0-9]),\s?(?:10|[0-9])\b/);
+  });
+});
