@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ConnectButton } from "@/components/ConnectButton";
 import { AzimuthMark } from "@/components/marks/AzimuthMark";
-import { BearingIcon, CrosshairIcon, SealIcon } from "@/components/marks/Icons";
+import { BearingIcon, CrosshairIcon, HuntersIcon, SealIcon } from "@/components/marks/Icons";
 
 const DESTINATIONS = [
   { href: "/app", label: "Today", Icon: CrosshairIcon, exact: true },
   { href: "/app/recap", label: "Yesterday", Icon: SealIcon, exact: true },
+  { href: "/app/leaderboard", label: "Standings", Icon: HuntersIcon, exact: true },
   { href: "/", label: "How it works", Icon: BearingIcon, exact: true },
 ];
 
@@ -64,7 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <main className="flex-1 pb-24 lg:pb-0">{children}</main>
 
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t-2 border-ink bg-paper-raised lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t-2 border-ink bg-paper-raised lg:hidden">
           {DESTINATIONS.map((item) => {
             const active = isActive(pathname, item.href, item.exact);
             return (
