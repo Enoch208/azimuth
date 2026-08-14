@@ -112,10 +112,17 @@ export function DailyMap({
               // A rival's move, never a rival's answer: a mark on the tile and,
               // where several have been, how many. No temperature can appear
               // here, because nobody but its owner can read one.
+              // Drawn rather than typed: a middle dot in the faintest ink was
+              // two low-contrast pixels on a forty-eight pixel tile, so the
+              // board looked empty while claiming fourteen hunters had dug on it.
               <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <span className="num text-[9px] font-semibold text-ink-ghost sm:text-[10px]">
-                  {rivals.hunters > 1 ? rivals.hunters : "·"}
-                </span>
+                {rivals.hunters > 1 ? (
+                  <span className="num text-[11px] font-semibold text-ink-faint sm:text-xs">
+                    {rivals.hunters}
+                  </span>
+                ) : (
+                  <span className="size-2 rounded-full bg-ink-faint sm:size-2.5" />
+                )}
               </span>
             ) : null}
             {isTreasure && !dug ? (
