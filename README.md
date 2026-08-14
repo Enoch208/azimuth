@@ -15,7 +15,7 @@
 
 One treasure is buried on an 11×11 map. Everyone hunts the same one, on the same board, on the same day. You get six digs, and each one tells you only how close you are — in an answer **decrypted to your wallet and nobody else's**. You can watch exactly where your rivals dig, all day, and learn nothing from it. Run out of digs and you get **one sealed guess**: a tile you encrypt yourself, checked against a coordinate the contract cannot read either. At midnight UTC the map opens and the day is scored.
 
-**[ Play it ↗ ](https://azimuth-inco.vercel.app)** · **[ Watch the demo ↗ ](REPLACE_WITH_VIDEO_URL)** · **[ Onchain evidence ↗ ](evidence/deployment.md)** · **[ Run it locally ↗ ](#run-it-locally)**
+**[ Play it ↗ ](https://azimuth-inco.vercel.app)** · **[ Watch the demo ↗ ](https://github.com/user-attachments/assets/495164ae-be4f-4e80-b072-711b2020ee65)** · **[ Onchain evidence ↗ ](evidence/deployment.md)** · **[ Run it locally ↗ ](#run-it-locally)**
 
 Built for the **Inco Summer Game Jam**, on **Inco Lightning** over Base Sepolia.
 
