@@ -33,6 +33,20 @@ export interface DailySnapshot {
   guessRight: boolean | null;
 }
 
+// The covalidator answers 503 often enough to matter — a single refused read on
+// page load used to leave a whole board sitting on "still arriving" until the
+// player reloaded by hand. Digging already retried; loading did not.
+async function withRetry<T>(attempt: () => Promise<T>, tries = 4): Promise<T | null> {
+  for (let n = 0; n < tries; n += 1) {
+    try {
+      return await attempt();
+    } catch {
+      if (n < tries - 1) await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+  return null;
+}
+
 export class DailyClient {
   private digs: Dig[] = [];
   private finished = false;
@@ -107,31 +121,32 @@ export class DailyClient {
     this.digs = xs.map((x, index) => ({ tile: { x, y: ys[index] }, temperature: null }));
 
     if (handles.length > 0) {
-      try {
-        const lightning = await getLightning();
-        const results = await lightning.attestedDecrypt(this.wallet, [...handles]);
+      const lightning = await getLightning();
+      const results = await withRetry(() => lightning.attestedDecrypt(this.wallet, [...handles]));
+      if (results) {
         this.digs = this.digs.map((entry, index) => ({
           ...entry,
           temperature: toTemperature(results[index].plaintext.value),
         }));
-      } catch {
-        // leave them unread; the board still shows the digs that were spent
       }
+      // Still refused after several tries: leave them unread. The board shows
+      // the digs that were spent either way, and holds until they arrive.
     }
 
     // A sealed guess is two ciphertexts to its owner and nothing to anybody
     // else: the tile they named and whether it landed. Both are read back here
     // so a returning hunter sees their own last word rather than a blank.
     if (this.sealed) {
-      try {
-        const lightning = await getLightning();
-        const [tile, right] = await lightning.attestedDecrypt(this.wallet, [guess[1] as Hex, guess[2] as Hex]);
-        this.guessedTile = tileFromIndex(Number(tile.plaintext.value));
-        this.guessRight = Boolean(right.plaintext.value);
-      } catch {
-        // sealed and unread is a real state; the panel says so rather than
-        // pretending no guess was made.
+      const lightning = await getLightning();
+      const read = await withRetry(() =>
+        lightning.attestedDecrypt(this.wallet, [guess[1] as Hex, guess[2] as Hex]),
+      );
+      if (read) {
+        this.guessedTile = tileFromIndex(Number(read[0].plaintext.value));
+        this.guessRight = Boolean(read[1].plaintext.value);
       }
+      // sealed and unread is a real state; the panel says so rather than
+      // pretending no guess was made.
     }
 
     return this.snapshot();
