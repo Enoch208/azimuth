@@ -42,14 +42,17 @@ the day would be over for everyone still playing.
 
 ## Nothing public names a winner while the day runs
 
-Read at 13:45 UTC on 13 August, hours after two hunters had already dug the treasure up:
+Read at 13:45 UTC on 13 August, hours after two hunters had already dug the treasure up, and
+again at 00:00 UTC as the day closed with a seventh hunter on the board:
 
 ```
-day 20678  hunters=6  finders=0  opened=true  revealed=false
+13:45 UTC   day 20678  hunters=6  finders=0  opened=true  revealed=false
+00:00 UTC   day 20678  hunters=7  finders=0  opened=true  revealed=false
 ```
 
-`finders` stays at zero until the day closes. Scores register after midnight, because a public
-finder during the day points straight at the treasure.
+`finders` stayed at zero for the whole day, with four hunters holding a find the chain would
+not name. Scores register after midnight, because a public finder during the day points
+straight at the treasure.
 
 ## A sealed guess, end to end
 
@@ -88,19 +91,35 @@ by the wallet that earned it. `temperature = (chebyshev + 1) / 2`.
 | (2,2) | 8 | COLD | COLD |
 | (0,0) | 10 | FREEZING | FREEZING |
 
-## Six hunts on day 20678
+## The first rollover, and the day it settled
 
-Seeded deliberately by the author so the first reveal on this deployment has a populated board.
-These are scripted hunts, not organic players.
+Day 20678 closed at 00:00 UTC on 14 August and opened at 00:11. Final standings, exactly as the
+recap renders them:
 
-| Hunter | Result |
-|---|---|
-| kestrel | found it on dig 2 |
-| brimstone | found it on dig 4 |
-| corvid | six digs missed, sealed guess (10,0) — right |
-| enoch | six digs missed, sealed guess (10,0) — right |
-| marlow | six digs missed, sealed guess (0,10) — wrong |
-| quill | three digs, walked away |
+| Rank | Hunter | Result |
+|---|---|---|
+| 1 | kestrel | found it on dig 2 |
+| 2 | brimstone | found it on dig 4 |
+| 3 | corvid | six digs missed, sealed guess K1 — right |
+| 4 | enoch | six digs missed, sealed guess K1 — right |
+| 5 | enochox2 | six digs, closest one tile — BURNING on the last |
+| 6 | quill | three digs, walked away |
+| 7 | marlow | six digs missed, sealed guess A11 — wrong |
+
+Six of these were seeded by the author so the first reveal on this deployment had a populated
+board; they are scripted hunts, not organic players. `enochox2` played it live.
+
+Only `enoch` settled its find on chain, so `finders` reads 1 rather than 4: the throwaway keys
+behind the seeded wallets were discarded after the hunts were played. The standings above do
+not depend on that — they are derived from the revealed trails themselves, not from claims.
+
+The claim that did settle exercised the whole confidential path:
+
+```
+encrypted found flag decrypts to: true
+SETTLED via verifyDecryption  tx 0x74c13c5f26cd06946fa305782e5e38afc31293934a8e4991a923ac82b458d919
+day 20678: hunters=7 finders=1
+```
 
 Sample dig transactions from `enoch`'s hunt:
 
@@ -122,12 +141,21 @@ first answer on a fresh contract    67–71 s   (covalidator warming to a new de
 
 ## The keeper
 
-`revealDay` is permissionless, but the project runs a GitHub Action at 00:05 UTC. Verified by
-manual dispatch on 13 August:
+`revealDay` is permissionless, but the project runs a GitHub Action at 00:05 UTC. The scheduled
+run for the first real rollover did not fire on time — GitHub's cron queue is heavily contended
+at the top of the hour — so the workflow was dispatched manually at 00:10:
 
 ```
-run 31706136835 -> {"day":20677,"skipped":"no hunt that day"}
+run 31756474252 -> {"day":20678,"opened":true,"trails":4,"alreadyOpen":3,"failed":0,"hunters":7}
+run 31756828538 -> {"day":20678,"opened":true,"trails":3,"alreadyOpen":4,"failed":0,"hunters":7}
 ```
 
-The correct no-op: this deployment did not exist on day 20677. A sweep that fails part way
-through the trails retries them on the next run rather than reporting the day already done.
+The second run exists because the first exposed a real bug. The sweep skips a trail it can
+already read, and it was asking about only the first of a hunter's six ciphertexts. A reveal
+propagates unevenly: one trail came back with digs one and four public and the rest sealed, and
+that trail was marked done. The preflight now reads every handle a hunter left and only skips
+when all of them answer. After the second run, all seven trails and all three sealed guesses
+decrypt publicly.
+
+A sweep that leaves anything sealed answers 500, so a bad run goes red rather than quietly
+green.

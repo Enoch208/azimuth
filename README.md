@@ -64,8 +64,9 @@ else. Only the public record waits. Three tests hold this shut:
 - `testTheTreasureCannotBeClaimedBeforeMidnight`
 - `testNothingPublicSaysWhetherAGuessLanded`
 
-You can see the rule holding on chain right now. Day 20678 had six hunters and two of them dug
-the treasure up hours ago; `huntInfo` still reports **0 finders** until the day closes.
+You can see the rule held on chain for a whole day. Day 20678 ran with seven hunters, four of
+whom held a find — two dug it up, two named it — and `huntInfo` reported **0 finders** from the
+first dig until the moment the day closed.
 
 ## The sealed guess
 
@@ -208,8 +209,11 @@ node scripts/play-hunt.cjs --key 0x... --digs 3,4 7,7 0,10 --guess 5,5
   interface makes the wait part of the tension rather than pretending it is not there.
 - **Nothing stops one person playing from several wallets.** Digs are keyed on `msg.sender`,
   so the leaderboard is for fun, not for stakes.
-- **Day 20678 was seeded by the author.** Six wallets played it deliberately, to give the first
-  reveal on this deployment a populated board. They are scripted hunts, not organic players.
+- **Day 20678 was seeded by the author.** Six of its seven wallets played it deliberately, to
+  give the first reveal on this deployment a populated board. They are scripted hunts, not
+  organic players. Their throwaway keys were discarded afterwards, so only one of the four
+  finds was settled on chain and `finders` reads 1 — the standings are derived from the
+  revealed trails, not from claims, and are unaffected.
 - **The map opens on a schedule this project runs.** `revealDay` is permissionless, so anyone
   can open yesterday's map if the scheduler misses, but until somebody calls it the recap has
   nothing to show. The keeper is a GitHub Action at 00:05 UTC; a sweep that fails part way
