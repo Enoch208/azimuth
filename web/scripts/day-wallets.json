@@ -1,0 +1,56 @@
+[
+  {
+    "name": "halyard",
+    "digs": [
+      [
+        1,
+        2
+      ],
+      [
+        7,
+        3
+      ],
+      [
+        4,
+        8
+      ]
+    ],
+    "key": "0x191d28d56fb1802ca68563a5c56c9a93790dd0fc72aefcd5852690d69d7873d1"
+  },
+  {
+    "name": "tessellate",
+    "digs": [
+      [
+        9,
+        9
+      ],
+      [
+        2,
+        5
+      ],
+      [
+        6,
+        1
+      ]
+    ],
+    "key": "0x1b50a8afaac650eef183bb30a92355ec0983c9cac9b7659e6f3ff0b96c705760"
+  },
+  {
+    "name": "vesper",
+    "digs": [
+      [
+        5,
+        7
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        8,
+        6
+      ]
+    ],
+    "key": "0xa5fe102850bbb91968eb75e581d2b028944ce0f99f84b999da83d6fa223e2aaa"
+  }
+]
