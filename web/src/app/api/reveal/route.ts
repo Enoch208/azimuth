@@ -17,17 +17,17 @@ function keeper() {
   return key ? privateKeyToAccount(key as Hex, { nonceManager }) : null;
 }
 
-// Which hunters dug that day, and one ciphertext handle each. Shares the
-// recap's bracketed day window rather than walking a fixed 48 hour lookback in
-// sequence: the old version issued roughly 46 sequential getLogs calls before
-// the first transaction was sent.
-async function huntersOn(day: number): Promise<{ hunter: string; handle: Hex }[]> {
+// Which hunters dug that day, and every ciphertext handle each of them left.
+// Shares the recap's bracketed day window rather than walking a fixed 48 hour
+// lookback in sequence: the old version issued roughly 46 sequential getLogs
+// calls before the first transaction was sent.
+async function huntersOn(day: number): Promise<{ hunter: string; handles: Hex[] }[]> {
   const rows = await dugOn(day);
-  const first = new Map<string, Hex>();
+  const trails = new Map<string, Hex[]>();
   for (const row of rows) {
-    if (!first.has(row.hunter)) first.set(row.hunter, row.handle);
+    trails.set(row.hunter, [...(trails.get(row.hunter) ?? []), row.handle]);
   }
-  return [...first.entries()].map(([hunter, handle]) => ({ hunter, handle }));
+  return [...trails.entries()].map(([hunter, handles]) => ({ hunter, handles }));
 }
 
 // The contract keeps no per-trail record of having been revealed, so a retry
@@ -38,10 +38,16 @@ async function huntersOn(day: number): Promise<{ hunter: string; handle: Hex }[]
 // Fail-safe by construction: anything other than a clean read is treated as
 // still sealed, and gets revealed. The cost of a wrong guess here is one
 // duplicate transaction, never a trail left shut.
-async function alreadyOpen(handle: Hex): Promise<boolean> {
+//
+// Every handle is checked, not just the first. A reveal can propagate unevenly
+// across the digs in one trail — day 20678 came back with digs one and four
+// public and the rest sealed — and asking only about the first handle marks
+// that trail done and strands the remainder for good.
+async function alreadyOpen(handles: Hex[]): Promise<boolean> {
+  if (handles.length === 0) return true;
   try {
     const lightning = await getLightning();
-    await lightning.attestedReveal([handle]);
+    await lightning.attestedReveal(handles);
     return true;
   } catch {
     return false;
@@ -89,8 +95,8 @@ async function sweep() {
   const revealed: string[] = [];
   const skipped: string[] = [];
   const failed: string[] = [];
-  for (const { hunter, handle } of hunters) {
-    if (await alreadyOpen(handle)) {
+  for (const { hunter, handles } of hunters) {
+    if (await alreadyOpen(handles)) {
       skipped.push(hunter);
       continue;
     }
