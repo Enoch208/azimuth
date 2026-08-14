@@ -97,7 +97,7 @@ export async function dugOn(day: number) {
 // on costs one contract read per hunter and no decryption at all.
 async function guessesOn(day: number, hunters: string[]) {
   const found = new Map<string, { tile: Tile; right: boolean }>();
-  if (hunters.length === 0) return found;
+  if (hunters.length === 0) return { found, complete: true };
 
   const records = await Promise.all(
     hunters.map((hunter) =>
@@ -114,18 +114,30 @@ async function guessesOn(day: number, hunters: string[]) {
   );
 
   const sealed = records.filter((entry): entry is NonNullable<typeof entry> => entry !== null && entry.record[0]);
-  if (sealed.length === 0) return found;
+  if (sealed.length === 0) return { found, complete: records.every((entry) => entry !== null) };
 
+  // Read one guess at a time. Batching meant a single hunter whose guess had
+  // not propagated yet threw away every other hunter's, and the day then cached
+  // with the flagship mechanic missing from it.
   const lightning = await getLightning();
-  const handles = sealed.flatMap((entry) => [entry.record[1] as Hex, entry.record[2] as Hex]);
-  const revealed = await lightning.attestedReveal(handles);
+  const results = await Promise.all(
+    sealed.map((entry) =>
+      lightning
+        .attestedReveal([entry.record[1] as Hex, entry.record[2] as Hex])
+        .then((revealed) => ({ entry, revealed }))
+        .catch(() => null),
+    ),
+  );
 
-  sealed.forEach((entry, index) => {
-    const tileIndex = Number(revealed[index * 2].plaintext.value);
-    const right = Boolean(revealed[index * 2 + 1].plaintext.value);
-    found.set(entry.hunter.toLowerCase(), { tile: tileFromIndex(tileIndex), right });
-  });
-  return found;
+  for (const result of results) {
+    if (!result) continue;
+    found.set(result.entry.hunter.toLowerCase(), {
+      tile: tileFromIndex(Number(result.revealed[0].plaintext.value)),
+      right: Boolean(result.revealed[1].plaintext.value),
+    });
+  }
+
+  return { found, complete: results.every((result) => result !== null) };
 }
 
 // An opened day never changes again: the treasure is public, the trails are
@@ -200,7 +212,10 @@ export async function loadRecap(day: number): Promise<Recap> {
   const hunters = [...byHunter.keys()];
   const [names, sealed] = await Promise.all([
     loadCallsigns(hunters).catch(() => new Map<string, string>()),
-    guessesOn(day, hunters).catch(() => new Map<string, { tile: Tile; right: boolean }>()),
+    guessesOn(day, hunters).catch(() => ({
+      found: new Map<string, { tile: Tile; right: boolean }>(),
+      complete: false,
+    })),
   ]);
 
   const trails: RecapTrail[] = [...byHunter.entries()].map(([hunter, digs]) => ({
@@ -208,7 +223,7 @@ export async function loadRecap(day: number): Promise<Recap> {
     callsign: names.get(hunter.toLowerCase()) ?? null,
     digs,
     found: digs.some((dig) => dig.temperature === 0),
-    guess: sealed.get(hunter.toLowerCase()) ?? null,
+    guess: sealed.found.get(hunter.toLowerCase()) ?? null,
   }));
 
   trails.sort((a, b) => {
@@ -217,9 +232,12 @@ export async function loadRecap(day: number): Promise<Recap> {
   });
 
   const recap: Recap = { day, requestedDay: day, revealed: true, readable: true, treasure, trails };
-  // Only a fully-read day is worth keeping. A trail whose temperatures have not
-  // been revealed yet would otherwise be cached with holes in it forever.
-  if (trails.every((trail) => trail.digs.every((dig) => dig.temperature !== null))) {
+  // Only a fully-read day is worth keeping, and "fully read" has to include the
+  // sealed guesses. Caching on dig temperatures alone froze a day in which a
+  // right guess had not propagated yet, and that hunter then read as a miss for
+  // as long as the instance lived.
+  const digsRead = trails.every((trail) => trail.digs.every((dig) => dig.temperature !== null));
+  if (digsRead && sealed.complete) {
     opened.set(day, recap);
   }
   return recap;
